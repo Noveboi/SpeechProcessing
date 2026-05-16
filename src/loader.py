@@ -8,18 +8,21 @@ import numpy as np
 import scipy.signal as sig
 from scipy.io import wavfile
 
+from common import Audio
 
-def load_audio(filename: str, sample_rate: int = 16_000) -> np.ndarray:
+
+def load_audio(filename: str, sample_rate: int = 16_000) -> Audio:
     fs, audio = wavfile.read(filename)
 
-    audio = _convert_to_float32(
-        audio
-    )  # Standardize the numeric format of the samples to float32
+    # Standardize the numeric format of the samples to float32
+    audio = _convert_to_float32(audio)
 
+    # Convert to mono by averaging across all channels (if not mono already)
     if audio.ndim > 1:
-        audio = audio.mean(axis=1)  # Convert to mono by averaging across all channels
+        audio = audio.mean(axis=1)
 
-    return _resample(audio, original_fs=fs, target_fs=sample_rate)
+    waveform = _resample(audio, original_fs=fs, target_fs=sample_rate)
+    return Audio(waveform, sample_rate)
 
 
 def _convert_to_float32(audio: np.ndarray) -> np.ndarray:
@@ -42,32 +45,3 @@ def _resample(audio: np.ndarray, original_fs: int, target_fs: int) -> np.ndarray
     up = target_fs // g
     down = original_fs // g
     return sig.resample_poly(audio, up, down).astype(np.float32)
-
-
-if __name__ == "__main__":
-    import os
-    import sys
-
-    import matplotlib.pyplot as plt
-
-    if len(sys.argv) < 2:
-        print("Usage: python audio_loader.py <path/to/file.wav>")
-        sys.exit(1)
-
-    path = sys.argv[1]
-    fs = 16_000
-    waveform = load_audio(path, sample_rate=fs)
-
-    duration = len(waveform) / fs
-    print(f"File     : {os.path.basename(path)}")
-    print(f"SR       : {fs} Hz")
-    print(f"Samples  : {len(waveform):,}")
-    print(f"Duration : {duration:.3f} s")
-    print(f"dtype    : {waveform.dtype}")
-    print(f"Range    : [{waveform.min():.4f}, {waveform.max():.4f}]")
-
-    t = np.linspace(0, duration, int(duration * fs))
-    plt.plot(t, waveform)
-    plt.show()
-
-    wavfile.write("resampled.wav", rate=fs, data=waveform)
