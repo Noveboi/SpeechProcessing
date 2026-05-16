@@ -79,8 +79,9 @@ def pre_emphasis(audio: Audio, alpha: float = 0.97) -> Audio:
     # samples. Since we have no feedback, ``a`` is of length 1.
     emphasized = sig.lfilter(b=[1, -alpha], a=[1.0], x=audio.waveform)
 
-    return Audio(emphasized.astype(np.float32), audio.sample_rate)  # pyright: ignore[reportAttributeAccessIssue]
+    log.debug("Emphasized high-frequency components (α=%f)", alpha)
 
+    return Audio(emphasized.astype(DTYPE), audio.sample_rate)  # pyright: ignore[reportAttributeAccessIssue]
 
 def process(audio: Audio):
     pass
