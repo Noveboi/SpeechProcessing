@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 
 
-@dataclass
+@dataclass(frozen=True)
 class Audio:
     waveform: np.ndarray
     sample_rate: int
@@ -19,3 +19,10 @@ class Audio:
     @property
     def sample_count(self) -> int:
         return len(self.waveform)
+
+
+@dataclass(frozen=True)
+class Frame:
+    audio: Audio
+    start_idx: int
+    end_idx: int
