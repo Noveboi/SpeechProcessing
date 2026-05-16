@@ -3,25 +3,22 @@ This module contains the methods and functions that are utilized to transform th
 into a set of features which can be used downstream for statistical analysis/machine learning.
 """
 
-from dataclasses import dataclass
+import logging
 from math import floor
 from typing import Callable
 
 import numpy as np
 import scipy.signal as sig
 
-from common import Audio
+from common import Audio, Frame
 
 WINDOW_FN: dict[str, Callable[[np.ndarray], np.ndarray]] = {
     "hamming": lambda x: np.hamming(len(x)) * x
 }
 
+DTYPE = np.float32
 
-@dataclass
-class Frame:
-    audio: Audio
-    start_idx: int
-    end_idx: int
+log = logging.getLogger(__name__)
 
 
 def split_into_frames(
@@ -35,6 +32,7 @@ def split_into_frames(
 
     frames: list[Frame] = []
     hop_start = 0
+    index = 0
 
     while hop_start < audio.sample_count:
         hop_end = hop_start + hop_samples
@@ -43,11 +41,25 @@ def split_into_frames(
 
         # Zero-pad the last frame if the signal doesn't divide evenly.
         if len(waveform) < frame_samples:
-            waveform = np.pad(waveform, (0, frame_samples - len(waveform)))
+            pad_length = frame_samples - len(waveform)
+            waveform = np.pad(waveform, (0, pad_length))
+            log.debug(
+                "Zero padded frame[%d] with %d additional zero samples",
+                index,
+                pad_length,
+            )
 
         frame_audio = Audio(WINDOW_FN[window_fn](waveform), audio.sample_rate)
         frames.append(Frame(frame_audio, hop_start, frame_end - 1))
         hop_start = hop_end
+        index += 1
+
+    log.debug(
+        "Split audio into %d frames (hop=%dms,frame=%dms)",
+        len(frames),
+        hop_ms,
+        frame_ms,
+    )
 
     return frames
 
