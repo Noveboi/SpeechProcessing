@@ -2,6 +2,7 @@
 This module loads a WAV file and converts it to mono and re-samples it
 """
 
+import logging
 from math import gcd
 
 import numpy as np
@@ -10,23 +11,33 @@ from scipy.io import wavfile
 
 from common import Audio
 
+log = logging.getLogger(__name__)
+
 
 def load_audio(filename: str, sample_rate: int = 16_000) -> Audio:
-    fs, audio = wavfile.read(filename)
+    fs, samples = wavfile.read(filename)
+
+    log.debug("Read '%s' / shape=%s, fs=%d Hz", filename, samples.shape, fs)
 
     # Standardize the numeric format of the samples to float32
-    audio = _convert_to_float32(audio)
+    samples = _convert_to_float32(samples)
 
     # Convert to mono by averaging across all channels (if not mono already)
-    if audio.ndim > 1:
-        audio = audio.mean(axis=1)
+    if samples.ndim > 1:
+        samples = samples.mean(axis=1)
 
-    waveform = _resample(audio, original_fs=fs, target_fs=sample_rate)
-    return Audio(waveform, sample_rate)
+    waveform = _resample(samples, original_fs=fs, target_fs=sample_rate)
+    audio = Audio(waveform, sample_rate)
+
+    log.info("Audio loaded @ %d Hz / %f secs", audio.sample_rate, audio.duration)
+
+    return audio
 
 
 def _convert_to_float32(audio: np.ndarray) -> np.ndarray:
     dtype = audio.dtype
+
+    log.debug("Detected audio type as %s", dtype)
 
     if dtype == np.int16:
         return audio.astype(np.float32) / 32_768.0  # 2^15
