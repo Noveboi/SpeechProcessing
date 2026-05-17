@@ -1,33 +1,43 @@
 import logging
 
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.io import wavfile
+from sklearn.preprocessing import StandardScaler
 
+import classifier
+import dataset
 import loader
-import plots
+import postprocessor
 import processor
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s.%(msecs)03d | %(levelname)-8s | %(name)s — %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 
 def main():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s.%(msecs)03d | %(levelname)-8s | %(name)s — %(message)s",
-        datefmt="%H:%M:%S",
+    # Training
+    X_train, y_train = dataset.build(
+        speech_dir="../samples/train/speech", noise_dir="../samples/train/noise"
     )
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    model = classifier.KNN(k=5).fit(X_train_scaled, y_train)
 
+    # Inference
     audio = loader.load_audio("test.wav")
-    audio_emphasis = processor.pre_emphasis(audio)
-    frames = processor.split_into_frames(audio_emphasis, 25, 10, "hamming")
-    features = processor.extract(frames)
-    mfcc_matrix = features[:, 2:41]
+    features = processor.process(audio)  # (T, 45)
+    features = scaler.transform(features)  # normalise
+    predictions = model.predict(
+        features  # pyright: ignore[reportArgumentType]
+    )  # (T,) raw
 
-    plots.plot_waveform(audio, audio_emphasis)
-    plots.plot_power_spectrum(frames[50])
-    plots.plot_mel_filterbank(frames[0])
-    plots.plot_spectrogram(frames)
-    plots.plot_mfccs(mfcc_matrix)
-    plots.plot_time_domain_features(features)
+    # Post-processin
+    segments = postprocessor.process(
+        predictions,
+        audio_filename="mixed.wav",
+        output_path="results/mixed.csv",
+    )
 
 
 if __name__ == "__main__":
