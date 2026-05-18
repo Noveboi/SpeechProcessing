@@ -221,3 +221,4 @@ __marimo__/
 
 # Project-specific ignores
 samples/
+_cache/
