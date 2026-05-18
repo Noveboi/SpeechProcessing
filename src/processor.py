@@ -456,7 +456,7 @@ def process(audio: Audio, window_fn: str = "hamming") -> np.ndarray:
 
     Returns
     ----------
-    features : np.ndarray, shape (T, 45)
+    features : np.ndarray, shape (T, N_total_features)
         One 45-dimensional feature vector per frame.
     """
     audio = pre_emphasis(audio)
