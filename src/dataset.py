@@ -70,7 +70,7 @@ def _build_core(speech_dir: str, noise_dir: str) -> tuple[np.ndarray, np.ndarray
         for i, path in enumerate(wav_files):
             try:
                 audio = loader.load_audio(str(path))
-                features = processor.process(audio)  # (T, 45)
+                features = processor.process(audio)  # (T, N_total_features)
                 labels = np.full(len(features), label)  # (T,)
                 X_parts.append(features)
                 y_parts.append(labels)
@@ -109,19 +109,17 @@ def _build_core(speech_dir: str, noise_dir: str) -> tuple[np.ndarray, np.ndarray
 
 
 def build(
-    speech_dir: str, noise_dir: str, cache_dir: Path | None = None
+    speech_dir: str,
+    noise_dir: str,
+    cache_dir: str = "_cache",
+    use_cache: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Process all WAV files under speech_dir and noise_dir and return
-    a labelled feature matrix.
+    Process all WAV files under speech_dir and noise_dir and return a labelled feature matrix.
 
-    Directory structure assumed:
-        speech_dir/
-            *.wav  (and any subdirectories)
-        noise_dir/
-            *.wav  (and any subdirectories)
-
-    Labels: 1 = speech (foreground), 0 = noise (background)
+    Labels:
+        - 1 = speech (foreground)
+        - 0 = noise (background)
 
     Parameters
     ----------
@@ -129,27 +127,37 @@ def build(
         Path to the directory containing speech WAV files.
     noise_dir : str
         Path to the directory containing noise WAV files.
+    cache_dir : str, optional
+        Path to the cache which stores ``X_train`` and ``y_train`` data. (default=``"_cache"``)
+    use_cache : bool, optional
+        Whether to use the cached ``X_train`` and ``y_train`` data (if they exist) or not. (default=``True``)
 
     Returns
     -------
-    X : np.ndarray, shape (N_total_frames, 45)
+    X : np.ndarray, shape (N_total_frames, N_total_features)
     y : np.ndarray, shape (N_total_frames,)
     """
 
     # Save X, y to train only when we want
-    cache_dir = cache_dir or Path("_cache")
-    X_dir = cache_dir / "X.npy"
-    y_dir = cache_dir / "y.npy"
+    cache_path = Path(cache_dir)
+    X_dir = cache_path / "X.npy"
+    y_dir = cache_path / "y.npy"
 
     try:
+        if not use_cache:
+            log.info("Skipping cache (disabled by user)")
+            raise OSError("Cache skipped")
+
         with np.load(X_dir) as X_data:
             X = X_data
-            log.info("Loaded X_train data from cache")
+            log.info("Loaded X_train data from cache (%s)", X_dir)
         with np.load(y_dir) as y_data:
             y = y_data
-            log.info("Loaded y_train data from cache")
+            log.info("Loaded y_train data from cache (%s)", y_dir)
     except OSError:
-        log.warning("No cached files found, begin training...")
+        if use_cache:
+            log.warning("No cached files found, begin training...")
+
         X, y = _build_core(speech_dir, noise_dir)
 
         with open(X_dir, mode="wb") as Xf:
