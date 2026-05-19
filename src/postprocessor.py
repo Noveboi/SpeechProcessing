@@ -67,6 +67,70 @@ def smooth_predictions(
     return smoothed
 
 
+def remove_short_segments(
+    predictions: np.ndarray,
+    min_duration_ms: int = 300,
+    hop_ms: int = 10,
+) -> np.ndarray:
+    """
+    Merge segments shorter than min_duration_ms into their neighbours.
+
+    Operates by iterating over runs (contiguous same-label stretches).
+    A short run is relabelled to match the label of whichever neighbour
+    is longer. If both neighbours are equal length the preceding
+    neighbour wins.
+
+    Parameters
+    ----------
+    predictions : np.ndarray, shape (T,)
+        Smoothed binary predictions.
+    min_duration_ms : int
+        Minimum allowed segment duration in milliseconds (default: 300).
+    hop_ms : int
+        Frame hop size in milliseconds (default: 10).
+
+    Returns
+    -------
+    cleaned : np.ndarray, shape (T,), dtype int
+    """
+    min_frames = max(1, min_duration_ms // hop_ms)
+    cleaned = predictions.copy()
+
+    changed = True
+    while changed:
+        changed = False
+        runs = _get_runs(cleaned)
+
+        for i, (label, start, end) in enumerate(runs):
+            length = end - start  # frames in this run
+
+            if length >= min_frames:
+                continue
+
+            # Determine replacement label from longer neighbour
+            prev_len = (runs[i - 1][2] - runs[i - 1][1]) if i > 0 else 0
+            next_len = (runs[i + 1][2] - runs[i + 1][1]) if i < len(runs) - 1 else 0
+
+            if prev_len == 0 and next_len == 0:
+                # Only one run in the entire sequence — nothing to merge into
+                break
+
+            replacement = runs[i - 1][0] if prev_len >= next_len else runs[i + 1][0]
+            cleaned[start:end] = replacement
+            changed = True  # a merge happened — rescan from the top
+            break  # runs list is now stale; recompute and retry
+
+    n_changed = np.sum(predictions != cleaned)
+    logger.info(
+        "Min duration filter (%d ms / %d frames) — %d frames relabelled (%.1f%%)",
+        min_duration_ms,
+        min_frames,
+        n_changed,
+        100 * n_changed / len(predictions),
+    )
+    return cleaned
+
+
 def _get_runs(
     predictions: np.ndarray,
 ) -> list[tuple[int, int, int]]:
