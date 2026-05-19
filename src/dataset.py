@@ -17,16 +17,32 @@ from common import Audio
 log = logging.getLogger(__name__)
 
 
+def _parse_time(time_str: str) -> float:
+    """
+    Convert "HH:MM:SS.ss" to seconds.
+    """
+    h, m, s = time_str.split(":")
+    return int(h) * 3600 + int(m) * 60 + float(s)
+
+
 def load_test_transcription(path: str) -> list[dict]:
     """
-    Loads the corresponding test transcription file and produces a minimal
-    dictionary list containing the start and end times of speech.
+    Load the test transcription JSON and return a list of speech
+    intervals with start and end times converted to seconds.
     """
+    with open(path, mode="r") as f:
+        transcript = json.load(f)
 
-    with open(path, mode="r") as transcription_fp:
-        transcript = json.load(transcription_fp)
+    segments = [
+        {
+            "start": _parse_time(t["start_time"]),
+            "end": _parse_time(t["end_time"]),
+        }
+        for t in transcript
+    ]
 
-    return [{"start": t["start_time"], "end": t["end_time"]} for t in transcript]
+    log.info("Loaded %d transcript segments from %s", len(segments), path)
+    return segments
 
 
 def load_test_audio(test_dir: str) -> list[tuple[Path, Audio]]:
