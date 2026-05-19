@@ -3,7 +3,9 @@ Build the labelled training feature matrix from the speech/ and noise/
 directory structure.
 """
 
+import json
 import logging
+import time
 from pathlib import Path
 
 import numpy as np
@@ -15,7 +17,19 @@ from common import Audio
 log = logging.getLogger(__name__)
 
 
-def load_test_audio(test_dir: str) -> list[tuple[str, Audio]]:
+def load_test_transcription(path: str) -> list[dict]:
+    """
+    Loads the corresponding test transcription file and produces a minimal
+    dictionary list containing the start and end times of speech.
+    """
+
+    with open(path, mode="r") as transcription_fp:
+        transcript = json.load(transcription_fp)
+
+    return [{"start": t["start_time"], "end": t["end_time"]} for t in transcript]
+
+
+def load_test_audio(test_dir: str) -> list[tuple[Path, Audio]]:
     """
     Loads all the test audio samples.
 
@@ -27,7 +41,7 @@ def load_test_audio(test_dir: str) -> list[tuple[str, Audio]]:
     Returns
     --------
     List of tuples containing two elements:
-        file_path : str
+        file_path : Path
         audio : Audio
     """
     path = Path(test_dir)
@@ -37,14 +51,14 @@ def load_test_audio(test_dir: str) -> list[tuple[str, Audio]]:
         log.warning("No WAV files found!")
         return []
 
-    audio_list: list[tuple[str, Audio]] = []
+    audio_list: list[tuple[Path, Audio]] = []
 
     for path in wav_files:
         log.info("Loading test file: %s", path)
         path_str = str(path)
 
         audio = loader.load_audio(path_str)
-        audio_list.append((path_str, audio))
+        audio_list.append((path, audio))
 
     return audio_list
 
@@ -60,21 +74,33 @@ def _build_core(speech_dir: str, noise_dir: str) -> tuple[np.ndarray, np.ndarray
             log.warning("No WAV files found in %s", directory)
             continue
 
+        log.info("Loading %d %s files", len(wav_files), class_name)
+
+        audios: list[tuple[Audio, Path]] = [
+            (loader.load_audio(str(path)), path) for path in wav_files
+        ]
+
+        processed_duration = 0
+        total_duration = sum(audio.duration for audio, _ in audios)
+        times: list[float] = []
+        t_scores: list[float] = []
+
         log.info(
-            "Processing %d %s files from %s",
+            "Processing %d %s files from %s (Total Duration: %fs)",
             len(wav_files),
             class_name,
             directory,
+            total_duration,
         )
 
-        for i, path in enumerate(wav_files):
+        for i, (audio, path) in enumerate(audios):
+            t_start = time.perf_counter()
             try:
-                audio = loader.load_audio(str(path))
-                features = processor.process(audio)  # (T, N_total_features)
-                labels = np.full(len(features), label)  # (T,)
+                features = processor.process(audio)  # (N_frames, N_features)
+                labels = np.full(len(features), label)  # (N_frames,)
                 X_parts.append(features)
                 y_parts.append(labels)
-                log.debug(
+                log.info(
                     "[%s %d/%d] %s — %d frames",
                     class_name,
                     i + 1,
@@ -85,6 +111,26 @@ def _build_core(speech_dir: str, noise_dir: str) -> tuple[np.ndarray, np.ndarray
             except Exception as e:
                 log.error("Failed to process %s — %s", path.name, e)
                 continue
+
+            processed_duration += audio.duration
+            remaining_duration = total_duration - processed_duration
+
+            t_end = time.perf_counter()
+            t_current = t_end - t_start
+
+            times.append(t_current)
+            t_scores.append(t_current / audio.duration)
+
+            t_mean = np.mean(times)
+            t_mean_score = np.mean(t_scores)
+
+            log.info(
+                "T=%.3fs | AVG=%.3fs | ETA=%.3fs (%.3f%%)",
+                t_current,
+                t_mean,
+                t_mean_score * remaining_duration,
+                (processed_duration / total_duration) * 100,
+            )
 
         log.info(
             "Finished %s files — %d total frames so far",
@@ -148,17 +194,20 @@ def build(
             log.info("Skipping cache (disabled by user)")
             raise OSError("Cache skipped")
 
-        with np.load(X_dir) as X_data:
-            X = X_data
-            log.info("Loaded X_train data from cache (%s)", X_dir)
-        with np.load(y_dir) as y_data:
-            y = y_data
-            log.info("Loaded y_train data from cache (%s)", y_dir)
+        X = np.load(X_dir)
+        y = np.load(y_dir)
+
+        log.info("Loaded X_train data from cache (%s)", X_dir)
+        log.info("Loaded y_train data from cache (%s)", y_dir)
     except OSError:
         if use_cache:
             log.warning("No cached files found, begin training...")
 
         X, y = _build_core(speech_dir, noise_dir)
+
+        # Ensure parent directories exist
+        Path(X_dir).parent.mkdir(parents=True, exist_ok=True)
+        Path(y_dir).parent.mkdir(parents=True, exist_ok=True)
 
         with open(X_dir, mode="wb") as Xf:
             np.save(Xf, X)
