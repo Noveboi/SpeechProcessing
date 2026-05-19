@@ -93,7 +93,7 @@ def zero_crossing_rate(frame: Frame) -> np.ndarray:
     N = frame.audio.sample_count
 
     signs = np.sign(x)
-    crossings = np.sum(signs[:-1] != signs[1:])
+    crossings = np.sum(signs[:-1] != signs[1])
     zcr = crossings / (N - 1)
 
     return np.array([zcr], dtype=DTYPE)
@@ -124,9 +124,7 @@ def power_spectrum(frame: Frame) -> tuple[np.ndarray, np.ndarray]:
     N = frame.audio.sample_count
     fs = frame.audio.sample_rate
 
-    fft_result = np.fft.rfft(
-        x, n=N
-    )  # shape: (N//2 + 1,), reminder: N//2 is frequency bins
+    fft_result = np.fft.rfft(x)  # shape: (N//2 + 1,), reminder: N//2 is frequency bins
     power = (np.abs(fft_result) ** 2) / N  # normalise by frame length
     freqs = np.fft.rfftfreq(N, d=1.0 / fs)  # frequency label for each bin
 
@@ -159,7 +157,7 @@ def mel_filterbank(
 
     Returns
     -------
-    filterbank : np.ndarray, shape (n_filters, M)
+    filterbank : np.ndarray, shape (N_filters, M)
         Each row is one triangular filter over the FFT bins.
     """
     if f_max is None:
@@ -205,14 +203,14 @@ def dct(log_energies: np.ndarray, n_coeffs: int = 13) -> np.ndarray:
 
     Parameters
     ----------
-    log_energies : np.ndarray, shape (n_filters,)
+    log_energies : np.ndarray, shape (N_filters,)
         Log Mel filterbank energy vector.
     n_coeffs : int
         Number of cepstral coefficients to return (default: 13).
 
     Returns
     -------
-    coeffs : np.ndarray, shape (n_coeffs,)
+    coeffs : np.ndarray, shape (N_coeffs,)
         The raw MFCC vector. This describes the spectral envelope of the frame.
     """
     M = len(log_energies)
@@ -267,7 +265,7 @@ def extract_mfcc(
 
     Returns
     -------
-    features : np.ndarray, shape (T, n_coeffs * 3)
+    features : np.ndarray, shape (N_frames, n_coeffs * 3)
         39-dimensional feature vector per frame.
 
     Sources
@@ -290,88 +288,19 @@ def extract_mfcc(
         coeffs = dct(log_energies, n_coeffs)
         mfccs.append(coeffs)
 
-    mfccs = np.array(mfccs)  # (T, 13)
-    deltas = delta(mfccs, N)  # (T, 13)
-    ddeltas = delta_delta(mfccs, N)  # (T, 13)
+    mfccs = np.array(mfccs)  # (N_frames, 13)
+    deltas = delta(mfccs, N)  # (N_frames, 13)
+    ddeltas = delta_delta(mfccs, N)  # (N_frames, 13)
 
-    return np.concatenate([mfccs, deltas, ddeltas], axis=1)  # (T, 39)
-
-
-def spectral_centroid(freqs: np.ndarray, power: np.ndarray) -> np.ndarray:
-    total_power = np.sum(power)
-    centroid = np.sum(freqs * power) / (total_power + 1e-10)
-    return np.array([centroid], dtype=DTYPE)
+    return np.concatenate([mfccs, deltas, ddeltas], axis=1)  # (N_frames, 39)
 
 
-def spectral_rolloff(
-    freqs: np.ndarray,
-    power: np.ndarray,
-    threshold: float = 0.85,
-) -> np.ndarray:
-    """
-    Frequency below which ``threshold`` fraction of total power is contained.
-
-    Returns a (1,) array in Hz.
-    """
-    total_power = np.sum(power)
-    if total_power == 0.0:
-        return np.array([0.0], dtype=DTYPE)
-
-    cumulative_power = np.cumsum(power)
-    rolloff_idx = np.searchsorted(cumulative_power, threshold * total_power)
-    rolloff_idx = min(rolloff_idx, len(freqs) - 1)  # edge case guard
-
-    return np.array([freqs[rolloff_idx]], dtype=DTYPE)
-
-
-def spectral_bandwidth(
-    freqs: np.ndarray,
-    power: np.ndarray,
-    centroid: float,
-) -> np.ndarray:
-    """
-    Weighted standard deviation of frequencies around the centroid.
-
-    Parameters
-    ----------
-    centroid : float
-        Spectral centroid in Hz, as returned by spectral_centroid().
-
-    Returns a (1,) array in Hz.
-    """
-    total_power = np.sum(power)
-    if total_power == 0.0:
-        return np.array([0.0], dtype=DTYPE)
-
-    bandwidth = np.sqrt(np.sum(power * (freqs - centroid) ** 2) / total_power)
-    return np.array([bandwidth], dtype=DTYPE)
-
-
-def spectral_flux(
-    power_current: np.ndarray,
-    power_previous: np.ndarray,
-) -> np.ndarray:
-    """
-    Squared difference between consecutive normalised power spectra.
-
-    Parameters
-    ----------
-    power_current : np.ndarray, shape (M,)
-        Power spectrum of the current frame.
-    power_previous : np.ndarray, shape (M,)
-        Power spectrum of the previous frame. Pass np.zeros_like(power_current)
-        for the first frame.
-
-    Returns a (1,) array.
-    """
-
-    def normalise(p: np.ndarray) -> np.ndarray:
-        norm = np.linalg.norm(p)
-        return p / norm if norm > 0.0 else p
-
-    diff = normalise(power_current) - normalise(power_previous)
-    flux = np.sum(diff**2)
-    return np.array([flux], dtype=DTYPE)
+def spectral_entropy(power: np.ndarray) -> np.ndarray:
+    """Entropy of the power spectrum — lower for speech, higher for noise."""
+    total = np.sum(power) + 1e-10
+    p = power / total
+    entropy = -np.sum(p * np.log(p + 1e-10))
+    return np.array([entropy], dtype=DTYPE)
 
 
 def extract_spectral_features(
@@ -382,26 +311,16 @@ def extract_spectral_features(
 
     Returns
     -------
-    features : np.ndarray, shape (T, 4)
-        [centroid, rolloff, bandwidth, flux] per frame.
+    features : np.ndarray, shape (N_frames, N_spectral_features)
     """
     features = []
-    prev_power = None
 
     for frame in frames:
         freqs, power = power_spectrum(frame)
 
-        c = spectral_centroid(freqs, power)
-        r = spectral_rolloff(freqs, power)
-        b = spectral_bandwidth(freqs, power, centroid=c[0])
-        f = spectral_flux(
-            power, np.zeros_like(power) if prev_power is None else prev_power
-        )
+        features.append(np.concatenate([spectral_entropy(freqs, power)]))
 
-        features.append(np.concatenate([c, r, b, f]))
-        prev_power = power
-
-    return np.array(features, dtype=np.float32)  # (T, 4)
+    return np.array(features, dtype=np.float32)  # (T, N_spectral_features)
 
 
 def extract(frames: list[Frame]) -> np.ndarray:
@@ -409,31 +328,27 @@ def extract(frames: list[Frame]) -> np.ndarray:
     Extract all features for a list of frames and concatenate into
     a single feature matrix.
 
-    Feature layout per row:
-        [0]     ZCR                  (len 1)
-        [1]     RMS energy           (len 1)
-        [2:M]   MFCCs + Δ + ΔΔ       (len M)
-        [M:M+S] Spectral features    (len S)
-
     Returns
     -------
-    features : np.ndarray, shape (T, M + S + 2)
+    features : np.ndarray, shape (N_frames, N_features)
     """
     log.debug("Extracting features from %d frames", len(frames))
 
     log.debug("Calculate ZCR")
-    zcr = np.array([zero_crossing_rate(f) for f in frames])  # (T, 1)
+    zcr = np.array([zero_crossing_rate(f) for f in frames])  # (N_frames, 1)
 
     log.debug("Calculate RMS Energy")
-    rms = np.array([rms_energy(f) for f in frames])  # (T, 1)
+    rms = np.array([rms_energy(f) for f in frames])  # (N_frames, 1)
 
     log.debug("Calculate MFCCs")
-    mfccs = extract_mfcc(frames)  # (T, M)
+    mfccs = extract_mfcc(frames)  # (N_frames, N_mfccs)
 
     log.debug("Calculate spectral features")
-    spectral = extract_spectral_features(frames)  # (T, S)
+    spectral = extract_spectral_features(frames)  # (N_frames, N_spectral_features)
 
-    features = np.concatenate([zcr, rms, mfccs, spectral], axis=1)  # (T, M + S + 2)
+    features = np.concatenate(
+        [zcr, rms, mfccs, spectral], axis=1
+    )  # (N_frames, N_features)
 
     log.debug("Created %s feature matrix", features.shape)
 
