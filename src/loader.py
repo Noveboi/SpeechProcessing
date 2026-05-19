@@ -1,5 +1,5 @@
 """
-This module loads a WAV file and converts it to mono and re-samples it
+This module loads a WAV file, converts it to mono, and re-samples it
 """
 
 import logging
