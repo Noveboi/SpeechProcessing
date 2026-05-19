@@ -16,11 +16,6 @@ import logging
 from abc import ABC, abstractmethod
 
 import numpy as np
-from sklearn.metrics import (
-    accuracy_score,
-    confusion_matrix,
-    precision_recall_fscore_support,
-)
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 
@@ -118,7 +113,7 @@ class MLP(FrameClassifier):
             validation_fraction=0.1,
             random_state=1337,  # constant seed for deterministic outputs!!
             n_iter_no_change=15,  # stop if val loss doesn't improve for 15 consecutive epochs
-            verbose=False,  # use our own loggig
+            verbose=True,  # keep logging enabled
         )
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "MLP":
@@ -144,56 +139,15 @@ class MLP(FrameClassifier):
         return self._classifier.predict_proba(X)[:, 1]  # pyright: ignore[reportReturnType, reportArgumentType, reportCallIssue]
 
 
-def evaluate(
-    classifier: FrameClassifier,
-    X: np.ndarray,
-    y: np.ndarray,
-) -> dict:
+def get(key: str) -> FrameClassifier:
     """
-    Evaluate a trained classifier and return a metrics dictionary.
-
-    Computes accuracy, per-class precision / recall / F1, and a
-    confusion matrix.
-
-    Parameters
-    ----------
-    classifier : FrameClassifier
-        The classifier which will be evaluated
-    X : np.ndarray, shape (N, D)
-        Normalised feature matrix
-    y : np.ndarray, shape (N,)
-        Ground-truth labels
-
-    Returns
-    -------
-    metrics : dict with keys:
-        accuracy, precision, recall, f1  (per-class arrays, index 0=noise/1=speech)
-        confusion_matrix                 (2×2 np.ndarray)
+    Get a frame classifier implemention based on a key string (case-insensitive).
     """
-    y_pred = classifier.predict(X)
+    clean_key = key.strip().upper().replace("-", "")
 
-    accuracy = accuracy_score(y, y_pred)
-    precision, recall, f1, _ = precision_recall_fscore_support(y, y_pred, labels=[0, 1])  # pyright: ignore[reportAssignmentType]
-    cm = confusion_matrix(y, y_pred, labels=[0, 1])
+    if clean_key == "KNN":
+        return KNN()
+    if clean_key == "MLP":
+        return MLP()
 
-    precision: np.ndarray
-    recall: np.ndarray
-    f1: np.ndarray
-
-    log.info("Accuracy  : %.4f", accuracy)
-    log.info("           Noise      Speech")
-    log.info("Precision : %.4f     %.4f", precision[0], precision[1])
-    log.info("Recall    : %.4f     %.4f", recall[0], recall[1])
-    log.info("F1        : %.4f     %.4f", f1[0], f1[1])
-    log.info("Confusion matrix (rows=true, cols=pred):")
-    log.info("           Pred noise  Pred speech")
-    log.info("True noise     %6d       %6d", cm[0, 0], cm[0, 1])
-    log.info("True speech    %6d       %6d", cm[1, 0], cm[1, 1])
-
-    return {
-        "accuracy": accuracy,
-        "precision": precision,
-        "recall": recall,
-        "f1": f1,
-        "confusion_matrix": cm,
-    }
+    raise ValueError(f"Unknown classifier type '{key}'")
