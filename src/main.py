@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler
 
 import classifier
 import dataset
+import evaluator
 import postprocessor
 import processor
 
@@ -15,6 +16,12 @@ LOG_LEVEL_DICT: dict[str, int] = {
     "INFO": logging.INFO,
     "WARNING": logging.WARNING,
 }
+
+logging.addLevelName(logging.DEBUG, "DBG")
+logging.addLevelName(logging.INFO, "INF")
+logging.addLevelName(logging.WARNING, "WRN")
+logging.addLevelName(logging.ERROR, "ERR")
+logging.addLevelName(logging.CRITICAL, "CRT")
 
 
 def get_env(key: str) -> str | None:
@@ -40,7 +47,7 @@ def main():
 
     logging.basicConfig(
         level=log_level_from_str(log_level),
-        format="%(asctime)s.%(msecs)03d | %(levelname)-8s | %(name)s — %(message)s",
+        format="%(asctime)s.%(msecs)03d | %(levelname)s | %(name)s — %(message)s",
         datefmt="%H:%M:%S",
     )
 
@@ -50,12 +57,15 @@ def main():
     noise_dir = get_required_env("NOISE_DIR")
     test_dir = get_required_env("TEST_DIR")
     test_transcript = get_required_env("TRANSCRIPT")
+    model_name = get_required_env("MODEL")
 
     # Training
+    clf = classifier.get(model_name)
+
     X_train, y_train = dataset.build(speech_dir=speech_dir, noise_dir=noise_dir)
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
-    model = classifier.KNN(k=5).fit(X_train_scaled, y_train)
+    model = clf.fit(X_train_scaled, y_train)
 
     # Inference
     transcript = dataset.load_test_transcription(test_transcript)
@@ -74,10 +84,14 @@ def main():
         segments = postprocessor.process(
             predictions,
             audio_filename=file_name,
-            output_path=f"results/{file_name}.csv",
+            output_path=f"results/{model_name}_{file_name}.csv",
         )
 
-        print(segments)
+        score = evaluator.foreground_overlap(
+            transcript_segments=transcript, predicted_segments=segments
+        )
+
+        print(f"SCORE = {score:.5f}")
 
 
 if __name__ == "__main__":
