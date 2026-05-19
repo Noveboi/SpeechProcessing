@@ -218,11 +218,9 @@ def dct(log_energies: np.ndarray, n_coeffs: int = 13) -> np.ndarray:
     M = len(log_energies)
     # Build the DCT-II matrix explicitly — shape (M, M)
     n = np.arange(M)  # filter indices 0..M-1
-    k = np.arange(M).reshape(-1, 1)  # coefficient indices, column
-    dct_matrix = np.cos(np.pi * k * (n + 0.5) / M)
-
-    coeffs = dct_matrix @ log_energies  # (M, M) @ (M,) → (M,)
-    return coeffs[:n_coeffs].astype(DTYPE)
+    k = np.arange(n_coeffs).reshape(-1, 1)
+    dct_matrix = np.cos(np.pi * k * (n + 0.5) / M)  # shape (n_coeffs, M)
+    return (dct_matrix @ log_energies).astype(DTYPE)  # no slicing needed
 
 
 def delta(coeffs_matrix: np.ndarray, N: int = 2) -> np.ndarray:
@@ -282,12 +280,16 @@ def extract_mfcc(
     - Mel-frequency Cepstrum | Wikipedia Contibutors (https://en.wikipedia.org/wiki/Mel-frequency_cepstrum)
     - Comparaative Evaluation of Various MFCC Implementations on the Speaker Verification Task | T.Ganchev, N.Fakotakis, G.Kokkinakis
     """
+    if len(frames) == 0:
+        return np.array([])
+
     mfccs = []
+    freqs, _ = power_spectrum(frames[0])
+    filterbank = mel_filterbank(freqs, n_filters, frames[0].audio.sample_rate)
 
     # The per-frame extraction
     for frame in frames:
-        freqs, power = power_spectrum(frame)
-        filterbank = mel_filterbank(freqs, n_filters, frame.audio.sample_rate)
+        _, power = power_spectrum(frame)
         filter_energies = filterbank @ power
         log_energies = np.log(filter_energies + 1e-10)
         coeffs = dct(log_energies, n_coeffs)
