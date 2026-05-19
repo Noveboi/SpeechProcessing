@@ -6,8 +6,9 @@ from sklearn.preprocessing import StandardScaler
 
 import classifier
 import dataset
+import extractor
 import postprocessor
-import processor
+import preprocessor
 
 ENV_PREFIX = "SPEECH"
 LOG_LEVEL_DICT: dict[str, int] = {
@@ -69,10 +70,10 @@ def main():
     for path, audio in dataset.load_test_audio(test_dir):
         log.info("Processing and predicting audio for '%s'", path)
 
-        features = processor.process(audio)  # (N_frames, N_features)
-        features = scaler.transform(features)  # normalize
+        frames = preprocessor.process(audio)
+        features = extractor.extract(frames)  # (N_frames, N_features)
         predictions = model.predict(
-            features  # pyright: ignore[reportArgumentType]
+            scaler.transform(features)  # pyright: ignore[reportArgumentType]
         )  # (N_frames,)
 
         # Post-processin
