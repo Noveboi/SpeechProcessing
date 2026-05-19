@@ -6,7 +6,6 @@ from sklearn.preprocessing import StandardScaler
 
 import classifier
 import dataset
-import evaluator
 import postprocessor
 import processor
 
@@ -56,7 +55,6 @@ def main():
     speech_dir = get_required_env("SPEECH_DIR")
     noise_dir = get_required_env("NOISE_DIR")
     test_dir = get_required_env("TEST_DIR")
-    test_transcript = get_required_env("TRANSCRIPT")
     model_name = get_required_env("MODEL")
 
     # Training
@@ -68,8 +66,6 @@ def main():
     model = clf.fit(X_train_scaled, y_train)
 
     # Inference
-    transcript = dataset.load_test_transcription(test_transcript)
-
     for path, audio in dataset.load_test_audio(test_dir):
         log.info("Processing and predicting audio for '%s'", path)
 
@@ -81,17 +77,11 @@ def main():
 
         # Post-processin
         file_name = f"{path.name}"
-        segments = postprocessor.process(
+        postprocessor.process(
             predictions,
             audio_filename=file_name,
             output_path=f"results/{model_name}_{file_name}.csv",
         )
-
-        score = evaluator.foreground_overlap(
-            transcript_segments=transcript, predicted_segments=segments
-        )
-
-        print(f"SCORE = {score:.5f}")
 
 
 if __name__ == "__main__":
