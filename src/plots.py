@@ -232,7 +232,6 @@ def plot_spectrogram(
     audio content — e.g. are there clear silent regions and active
     speech regions?
     """
-    sr = frames[0].audio.sample_rate
     all_rows = []
 
     for frame in frames:
@@ -290,7 +289,6 @@ def plot_mfccs(
 
     T = mfcc_matrix.shape[0]
     time_axis = np.arange(T) * (hop_ms / 1000)
-    coeff_labels = [str(i) for i in range(1, 14)]
 
     static = mfcc_matrix[:, 0:13].T
     delta = mfcc_matrix[:, 13:26].T
