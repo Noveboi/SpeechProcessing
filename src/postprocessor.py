@@ -9,6 +9,8 @@ from pathlib import Path
 import numpy as np
 from scipy.ndimage import median_filter
 
+from src.common import Segment, SegmentLabel
+
 log = logging.getLogger(__name__)
 
 
@@ -159,7 +161,7 @@ def _get_runs(
 def extract_segments(
     predictions: np.ndarray,
     hop_ms: int = 10,
-) -> list[dict]:
+) -> list[Segment]:
     """
     Convert a cleaned frame-label sequence into a list of time segments.
 
@@ -169,36 +171,32 @@ def extract_segments(
         Fully post-processed binary predictions.
     hop_ms : int
         Frame hop size in milliseconds (default: 10).
-
-    Returns
-    -------
-    segments : list of dicts with keys: start, end, label
-        start and end are in seconds. label is 'foreground' or 'background'.
     """
     runs = _get_runs(predictions)
     hop_secs = hop_ms / 1000.0
 
-    segments = []
+    segments: list[Segment] = []
+
     for label, start_frame, end_frame in runs:
-        segments.append(
-            {
-                "start": round(start_frame * hop_secs, 3),
-                "end": round(end_frame * hop_secs, 3),
-                "label": "foreground" if label == 1 else "background",
-            }
+        segment = Segment(
+            start=round(start_frame * hop_secs, 3),
+            end=round(end_frame * hop_secs, 3),
+            label=SegmentLabel.FOREGROUND if label == 1 else SegmentLabel.BACKGROUND,
         )
+
+        segments.append(segment)
 
     log.info(
         "Extracted %d segments  (%d foreground, %d background)",
         len(segments),
-        sum(1 for s in segments if s["label"] == "foreground"),
-        sum(1 for s in segments if s["label"] == "background"),
+        sum(1 for s in segments if s.label == SegmentLabel.FOREGROUND),
+        sum(1 for s in segments if s.label == SegmentLabel.BACKGROUND),
     )
     return segments
 
 
 def write_csv(
-    segments: list[dict],
+    segments: list[Segment],
     audio_filename: str,
     output_path: str,
 ) -> None:
@@ -225,9 +223,9 @@ def write_csv(
             writer.writerow(
                 {
                     "Audiofile": audio_filename,
-                    "start": segment["start"],
-                    "end": segment["end"],
-                    "class": segment["label"],
+                    "start": segment.start,
+                    "end": segment.end,
+                    "class": segment.label.value,
                 }
             )
 
@@ -236,23 +234,20 @@ def write_csv(
 
 def process(
     predictions: np.ndarray,
-    audio_filename: str,
-    output_path: str,
     smooth_window_ms: int = 300,
     hop_ms: int = 10,
-) -> list[dict]:
+) -> list[Segment]:
     """
     Full post-processing pipeline.
 
     Returns
     -------
-    segments : list of dicts (also written to output_path)
+    segments : list of ``Segments``
     """
-    log.info("Post-processing %d frames for '%s'", len(predictions), audio_filename)
+    log.info("Post-processing %d frames", len(predictions))
 
     smoothed = smooth_predictions(predictions, smooth_window_ms, hop_ms)
     cleaned = remove_short_segments(smoothed)
     segments = extract_segments(cleaned, hop_ms)
-    write_csv(segments, audio_filename, output_path)
 
     return segments
