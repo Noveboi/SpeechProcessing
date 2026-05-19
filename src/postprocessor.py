@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 from scipy.ndimage import median_filter
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def smooth_predictions(
@@ -43,7 +43,7 @@ def smooth_predictions(
 
     Returns
     -------
-    smoothed : np.ndarray, shape (T,)  dtype int
+    smoothed : np.ndarray, shape (T,)  dtype ``int``
     """
     window_frames = max(1, window_ms // hop_ms)
 
@@ -56,7 +56,7 @@ def smooth_predictions(
 
     n_changed = np.sum(predictions != smoothed)
 
-    logger.info(
+    log.info(
         "Median filter (window=%d ms / %d frames) — %d frames changed (%.1f%%)",
         window_ms,
         window_frames,
@@ -125,7 +125,7 @@ def extract_segments(
             }
         )
 
-    logger.info(
+    log.info(
         "Extracted %d segments  (%d foreground, %d background)",
         len(segments),
         sum(1 for s in segments if s["label"] == "foreground"),
@@ -168,7 +168,7 @@ def write_csv(
                 }
             )
 
-    logger.info("CSV written → %s  (%d rows)", output_path, len(segments))
+    log.info("CSV written → %s  (%d rows)", output_path, len(segments))
 
 
 def process(
@@ -185,7 +185,7 @@ def process(
     -------
     segments : list of dicts (also written to output_path)
     """
-    logger.info("Post-processing %d frames for '%s'", len(predictions), audio_filename)
+    log.info("Post-processing %d frames for '%s'", len(predictions), audio_filename)
 
     smoothed = smooth_predictions(predictions, smooth_window_ms, hop_ms)
     segments = extract_segments(smoothed, hop_ms)
