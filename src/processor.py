@@ -238,20 +238,15 @@ def delta(coeffs_matrix: np.ndarray, N: int = 2) -> np.ndarray:
     -------
     deltas : np.ndarray, shape (F, n_coeffs)
     """
-    T = len(coeffs_matrix)
-    deltas = np.zeros_like(coeffs_matrix)
     denominator = 2 * np.sum(np.arange(1, N + 1) ** 2)
+    numerator = np.zeros_like(coeffs_matrix)
 
-    for t in range(T):
-        numerator = np.zeros(coeffs_matrix.shape[1])
-        for n in range(1, N + 1):
-            # Clamp indices at the boundaries rather than wrapping
-            forward = coeffs_matrix[min(t + n, T - 1)]
-            backward = coeffs_matrix[max(t - n, 0)]
-            numerator += n * (forward - backward)
-        deltas[t] = numerator / denominator
+    for n in range(1, N + 1):
+        forward = np.concatenate([coeffs_matrix[n:], coeffs_matrix[[-1] * n]])
+        backward = np.concatenate([coeffs_matrix[[0] * n], coeffs_matrix[:-n]])
+        numerator += n * (forward - backward)
 
-    return deltas.astype(DTYPE)
+    return (numerator / denominator).astype(DTYPE)
 
 
 def delta_delta(coeffs_matrix: np.ndarray, N: int = 2) -> np.ndarray:
