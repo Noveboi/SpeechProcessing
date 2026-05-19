@@ -31,7 +31,7 @@ def smooth_predictions(
 
     Parameters
     ----------
-    predictions : np.ndarray, shape (T,)
+    predictions : np.ndarray, shape (N_frames,)
         Raw binary predictions from the classifier (0=noise, 1=speech).
     window_ms : int
         Width of the smoothing window in milliseconds (default: 300).
@@ -42,7 +42,7 @@ def smooth_predictions(
 
     Returns
     -------
-    smoothed : np.ndarray, shape (T,)  dtype ``int``
+    smoothed : np.ndarray, shape (N_frames,)  dtype ``int``
     """
     window_frames = max(1, window_ms // hop_ms)
 
@@ -81,7 +81,7 @@ def remove_short_segments(
 
     Parameters
     ----------
-    predictions : np.ndarray, shape (T,)
+    predictions : np.ndarray, shape (N_frames,)
         Smoothed binary predictions.
     min_duration_ms : int
         Minimum allowed segment duration in milliseconds (default: 300).
@@ -90,7 +90,7 @@ def remove_short_segments(
 
     Returns
     -------
-    cleaned : np.ndarray, shape (T,), dtype int
+    cleaned : np.ndarray, shape (N_frames,), dtype int
     """
     min_frames = max(1, min_duration_ms // hop_ms)
     cleaned = predictions.copy()
@@ -120,7 +120,7 @@ def remove_short_segments(
             break  # runs list is now stale; recompute and retry
 
     n_changed = np.sum(predictions != cleaned)
-    logger.info(
+    log.info(
         "Min duration filter (%d ms / %d frames) — %d frames relabelled (%.1f%%)",
         min_duration_ms,
         min_frames,
@@ -251,7 +251,8 @@ def process(
     log.info("Post-processing %d frames for '%s'", len(predictions), audio_filename)
 
     smoothed = smooth_predictions(predictions, smooth_window_ms, hop_ms)
-    segments = extract_segments(smoothed, hop_ms)
+    cleaned = remove_short_segments(smoothed)
+    segments = extract_segments(cleaned, hop_ms)
     write_csv(segments, audio_filename, output_path)
 
     return segments
