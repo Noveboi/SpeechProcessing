@@ -24,7 +24,7 @@ from sklearn.metrics import (
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 class FrameClassifier(ABC):
@@ -61,18 +61,19 @@ class KNN(FrameClassifier):
         self._classifier = KNeighborsClassifier(
             n_neighbors=k,
             metric="euclidean",  # this is simple and the best choice because the data is normalized
-            n_jobs=-1,  # use all cores
+            n_jobs=-1,  # use CPU all cores
         )
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "KNN":
-        logger.info("Training k-NN  (k=%d)  on %d frames", self.k, len(X))
+        log.info("Training k-NN  (k=%d)  on %d frames", self.k, len(X))
         self._classifier.fit(X, y)
-        logger.info("k-NN training complete")
+        log.info("k-NN training complete")
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
+        log.debug("k-NN predicting %d frames", len(X))
         predictions = self._classifier.predict(X)
-        logger.debug("k-NN predicted %d frames", len(X))
+        log.debug("k-NN predicted %d frames", len(X))
         return predictions
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
@@ -121,7 +122,7 @@ class MLP(FrameClassifier):
         )
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "MLP":
-        logger.info(
+        log.info(
             "Training MLP  (layers=%s, lr=%.0e, max_iter=%d)  on %d frames",
             self.hidden_layer_sizes,
             self.learning_rate,
@@ -129,7 +130,7 @@ class MLP(FrameClassifier):
             len(X),
         )
         self._classifier.fit(X, y)
-        logger.info(
+        log.info(
             "MLP training complete — stopped at epoch %d  |  best val loss: %.4f",
             self._classifier.n_iter_,
             self._classifier.best_validation_score_,
@@ -179,15 +180,15 @@ def evaluate(
     recall: np.ndarray
     f1: np.ndarray
 
-    logger.info("Accuracy  : %.4f", accuracy)
-    logger.info("           Noise      Speech")
-    logger.info("Precision : %.4f     %.4f", precision[0], precision[1])
-    logger.info("Recall    : %.4f     %.4f", recall[0], recall[1])
-    logger.info("F1        : %.4f     %.4f", f1[0], f1[1])
-    logger.info("Confusion matrix (rows=true, cols=pred):")
-    logger.info("           Pred noise  Pred speech")
-    logger.info("True noise     %6d       %6d", cm[0, 0], cm[0, 1])
-    logger.info("True speech    %6d       %6d", cm[1, 0], cm[1, 1])
+    log.info("Accuracy  : %.4f", accuracy)
+    log.info("           Noise      Speech")
+    log.info("Precision : %.4f     %.4f", precision[0], precision[1])
+    log.info("Recall    : %.4f     %.4f", recall[0], recall[1])
+    log.info("F1        : %.4f     %.4f", f1[0], f1[1])
+    log.info("Confusion matrix (rows=true, cols=pred):")
+    log.info("           Pred noise  Pred speech")
+    log.info("True noise     %6d       %6d", cm[0, 0], cm[0, 1])
+    log.info("True speech    %6d       %6d", cm[1, 0], cm[1, 1])
 
     return {
         "accuracy": accuracy,
