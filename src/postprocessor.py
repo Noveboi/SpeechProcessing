@@ -1,6 +1,5 @@
 """
-Smooth raw frame-level classifier predictions into clean segment
-boundaries and write results to CSV.
+Smooth out raw frame-level classifier predictions into clean segment boundaries
 """
 
 import csv
