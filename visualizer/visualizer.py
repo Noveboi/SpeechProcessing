@@ -1,12 +1,6 @@
 """
-VAD Visualizer — plays an audio file and shows a RED/GREEN window
-based on background/foreground segments defined in a CSV file.
-
 Usage:
-    python vad_visualizer.py <audio_file> <csv_file>
-
-Dependencies:
-    pip install pygame
+    python visualizer.py <audio_file> <csv_file>
 """
 
 import csv
@@ -14,18 +8,11 @@ import sys
 import tkinter as tk
 from pathlib import Path
 
-try:
-    import pygame
-except ImportError:
-    sys.exit("Missing dependency: run  pip install pygame")
+import pygame
 
-
-# ── Colours ───────────────────────────────────────────────────────────────────
 COLOR_FOREGROUND = "#2ECC40"  # GREEN
 COLOR_BACKGROUND = "#FF4136"  # RED
 COLOR_IDLE = "#AAAAAA"  # grey before playback starts
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
 
 
 def load_segments(csv_path: str) -> list[dict]:
@@ -56,8 +43,12 @@ def class_at(segments: list[dict], t: float) -> str | None:
     return None
 
 
-class VADVisualizer:
-    POLL_MS = 20  # how often (ms) to refresh the colour
+class Visualizer:
+    """
+    Simple polling-based window app that shows voice activity based on predicted data from the VAD system.
+    """
+
+    POLL_MS = 20  # how often (ms) to refresh the color
 
     def __init__(self, audio_path: str, csv_path: str):
         self.audio_path = audio_path
@@ -109,7 +100,6 @@ class VADVisualizer:
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     # Playback
-
     def start_playback(self):
         if self._playing:
             return
@@ -134,16 +124,16 @@ class VADVisualizer:
         cls = class_at(self.segments, elapsed)
 
         if cls == "foreground":
-            colour = COLOR_FOREGROUND
+            color = COLOR_FOREGROUND
             label = "FOREGROUND"
         elif cls == "background":
-            colour = COLOR_BACKGROUND
+            color = COLOR_BACKGROUND
             label = "BACKGROUND"
         else:
-            colour = COLOR_IDLE
+            color = COLOR_IDLE
             label = "…"
 
-        self._set_colour(colour)
+        self._set_color(color)
         self.status_var.set(label)
         self.time_var.set(f"{elapsed:.2f} s")
 
@@ -151,18 +141,17 @@ class VADVisualizer:
 
     def _finish(self):
         self._playing = False
-        self._set_colour(COLOR_IDLE)
+        self._set_color(COLOR_IDLE)
         self.status_var.set("Playback finished")
         self.time_var.set("")
         self.play_btn.config(state=tk.NORMAL, text="▶  Replay")
 
-    def _set_colour(self, colour: str):
-        self.root.configure(bg=colour)
-        self.status_lbl.configure(bg=colour)
-        self.time_lbl.configure(bg=colour)
+    def _set_color(self, color: str):
+        self.root.configure(bg=color)
+        self.status_lbl.configure(bg=color)
+        self.time_lbl.configure(bg=color)
 
     # Lifecycle
-
     def on_close(self):
         pygame.mixer.music.stop()
         pygame.mixer.quit()
@@ -174,7 +163,7 @@ class VADVisualizer:
 
 def main():
     if len(sys.argv) != 3:
-        print("Usage: python vad_visualizer.py <audio_file> <csv_file>")
+        print("Usage: python visualizer.py <audio_file> <csv_file>")
         sys.exit(1)
 
     audio_path, csv_path = sys.argv[1], sys.argv[2]
@@ -184,7 +173,7 @@ def main():
     if not Path(csv_path).exists():
         sys.exit(f"CSV file not found: {csv_path}")
 
-    app = VADVisualizer(audio_path, csv_path)
+    app = Visualizer(audio_path, csv_path)
     app.run()
 
 
