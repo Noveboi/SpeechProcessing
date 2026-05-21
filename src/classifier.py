@@ -143,7 +143,7 @@ class MLP(FrameClassifier):
         )
         self._classifier.fit(X, y)
         log.info(
-            "MLP training complete — stopped at epoch %d  |  best val loss: %.4f",
+            "MLP training complete — stopped at epoch %d  |  best val accurary: %.4f",
             self._classifier.n_iter_,
             self._classifier.best_validation_score_,
         )
