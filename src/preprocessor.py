@@ -99,8 +99,8 @@ def process(audio: Audio, window_fn: str = "hamming") -> list[Frame]:
     frames : list[Frame]
         The windowed frames.
     """
-    audio = pre_emphasis(audio)
     audio = remove_dc_offset(audio)
+    audio = pre_emphasis(audio)
 
     frames = split_into_frames(
         audio,
