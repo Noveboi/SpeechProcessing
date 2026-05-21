@@ -97,9 +97,9 @@ class MLP(FrameClassifier):
     hidden_layer_sizes : tuple[int, int]
         Number of neurons in each hidden layer.
     learning_rate : float
-        Initial learning rate for Adam (default: 1e-3).
+        Initial learning rate for Adam.
     max_iter : int
-        Maximum number of training epochs (default: 200).
+        Maximum number of training epochs.
     """
 
     def __init__(
@@ -118,11 +118,7 @@ class MLP(FrameClassifier):
             learning_rate_init=learning_rate,
             learning_rate="adaptive",  # reduces learning rate on plateau instead of stopping = more opportunity for improvement
             max_iter=max_iter,
-            early_stopping=True,  # reserves 10% of the training data as
-            # internal validation set and halts after
-            # validation loss stops improving for
-            # ``n_iter_no_change``.
-            # Used for overfitting prevention
+            early_stopping=True,
             validation_fraction=0.1,
             random_state=1337,  # constant seed for deterministic outputs!!
             n_iter_no_change=20,
