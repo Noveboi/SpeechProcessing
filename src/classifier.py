@@ -64,7 +64,6 @@ class KNN(FrameClassifier):
         self.k = k
         self._classifier = KNeighborsClassifier(
             n_neighbors=k,
-            metric="euclidean",  # this is simple and the best choice because the data is normalized
             n_jobs=-1,  # use CPU all cores
         )
 

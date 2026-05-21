@@ -183,6 +183,19 @@ def delta_delta(coeffs_matrix: np.ndarray, N: int = 2) -> np.ndarray:
     return delta(delta(coeffs_matrix, N), N)
 
 
+def cmvn(mfccs: np.ndarray) -> np.ndarray:
+    """
+    Perform 'Cepstral Mean and Variance Normalization' on the raw MFCCs.
+
+    This removes channel and noise-induced bias across speech and is SUPER good
+    for speech in noisy environments (such as the one given by the project).
+    """
+    mean = np.mean(mfccs, axis=0)
+    std = np.std(mfccs, axis=0) + 1e-10
+
+    return (mfccs - mean) / std
+
+
 def extract_mfcc(
     frames: list[Frame],
     n_filters: int = 26,
@@ -266,6 +279,7 @@ def extract(frames: list[Frame]) -> np.ndarray:
     zcr = np.array([zero_crossing_rate(f) for f in frames])  # (N_frames, 1)
     rms = np.array([rms_energy(f) for f in frames])  # (N_frames, 1)
     mfccs = extract_mfcc(frames)  # (N_frames, N_mfccs)
+    mfccs = cmvn(mfccs)  # (N_frames, N_mfccs)
     spectral = extract_spectral_features(frames)  # (N_frames, N_spectral_features)
 
     features = np.concatenate(
