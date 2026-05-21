@@ -142,7 +142,7 @@ def _build_core(speech_dir: str, noise_dir: str) -> tuple[np.ndarray, np.ndarray
             X_parts.append(features)
             y_parts.append(np.ones(len(features), dtype=np.int8))
 
-        log.info("Processed %s", speech_path.name)
+        log.info("Processed '%s'", speech_path.name)
 
     # 3. Pure noise (label = 0)
     for noise_path in noise_files:

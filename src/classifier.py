@@ -96,7 +96,7 @@ class MLP(FrameClassifier):
     Parameters
     ----------
     hidden_layer_sizes : tuple[int, int]
-        Number of neurons in each hidden layer (default: (128, 64)).
+        Number of neurons in each hidden layer.
     learning_rate : float
         Initial learning rate for Adam (default: 1e-3).
     max_iter : int
@@ -105,7 +105,7 @@ class MLP(FrameClassifier):
 
     def __init__(
         self,
-        layer_sizes: tuple = (256, 128, 64),
+        layer_sizes: tuple = (64, 32),
         learning_rate: float = 1e-3,
         max_iter: int = 500,
     ) -> None:
@@ -126,8 +126,8 @@ class MLP(FrameClassifier):
             # Used for overfitting prevention
             validation_fraction=0.1,
             random_state=1337,  # constant seed for deterministic outputs!!
-            n_iter_no_change=20,  # stop if val loss doesn't improve for 15 consecutive epochs
-            verbose=True,  # keep logging enabled
+            n_iter_no_change=20,
+            verbose=True,
         )
 
     @property
