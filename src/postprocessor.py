@@ -68,6 +68,23 @@ def smooth_predictions(
     return smoothed
 
 
+def apply_hangover(
+    predictions: np.ndarray,
+    hangover_ms: int = 400,
+    hop_ms: int = 10,
+) -> np.ndarray:
+    hangover_frames = hangover_ms // hop_ms
+    result = predictions.copy()
+    counter = 0
+    for i in range(len(result)):
+        if predictions[i] == 1:
+            counter = hangover_frames
+        elif counter > 0:
+            result[i] = 1
+            counter -= 1
+    return result
+
+
 def remove_short_segments(
     predictions: np.ndarray,
     min_duration_ms: int = 300,
@@ -246,8 +263,9 @@ def process(
     """
     log.info("Post-processing %d frames", len(predictions))
 
-    smoothed = smooth_predictions(predictions, smooth_window_ms, hop_ms)
-    cleaned = remove_short_segments(smoothed)
-    segments = extract_segments(cleaned, hop_ms)
+    predictions = smooth_predictions(predictions, smooth_window_ms, hop_ms)
+    predictions = apply_hangover(predictions)
+    predictions = remove_short_segments(predictions)
+    segments = extract_segments(predictions, hop_ms)
 
     return segments
