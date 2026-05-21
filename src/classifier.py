@@ -105,9 +105,9 @@ class MLP(FrameClassifier):
 
     def __init__(
         self,
-        layer_sizes: tuple[int, int] = (128, 64),
+        layer_sizes: tuple = (256, 128, 64),
         learning_rate: float = 1e-3,
-        max_iter: int = 200,
+        max_iter: int = 500,
     ) -> None:
         self.hidden_layer_sizes = layer_sizes
         self.learning_rate = learning_rate
@@ -117,6 +117,7 @@ class MLP(FrameClassifier):
             activation="relu",
             solver="adam",
             learning_rate_init=learning_rate,
+            learning_rate="adaptive",  # reduces learning rate on plateau instead of stopping = more opportunity for improvement
             max_iter=max_iter,
             early_stopping=True,  # reserves 10% of the training data as
             # internal validation set and halts after
@@ -125,7 +126,7 @@ class MLP(FrameClassifier):
             # Used for overfitting prevention
             validation_fraction=0.1,
             random_state=1337,  # constant seed for deterministic outputs!!
-            n_iter_no_change=15,  # stop if val loss doesn't improve for 15 consecutive epochs
+            n_iter_no_change=20,  # stop if val loss doesn't improve for 15 consecutive epochs
             verbose=True,  # keep logging enabled
         )
 
