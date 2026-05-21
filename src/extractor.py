@@ -22,7 +22,7 @@ def zero_crossing_rate(frame: Frame) -> np.ndarray:
     N = frame.audio.sample_count
 
     signs = np.sign(x)
-    crossings = np.sum(signs[:-1] != signs[1])
+    crossings = np.sum(signs[:-1] != signs[1:])
     zcr = crossings / (N - 1)
 
     return np.array([zcr], dtype=DTYPE)
