@@ -130,6 +130,7 @@ def _build_core(speech_dir: str, noise_dir: str) -> tuple[np.ndarray, np.ndarray
 
         # 2. Noisy speech at each SNR level (all label = 1)
         for snr_db in SNR_LEVELS_DB:
+            log.debug("Mixing noise/speech @ %.3fdB SNR", snr_db)
             noise_waveform = noise_waveforms[rng.integers(len(noise_waveforms))]
             mixed = _mix_speech_noise(speech_audio.waveform, noise_waveform, snr_db)
             mixed_audio = Audio(mixed, speech_audio.sample_rate)

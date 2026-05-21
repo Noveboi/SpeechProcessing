@@ -263,22 +263,13 @@ def extract(frames: list[Frame]) -> np.ndarray:
     """
     log.debug("Extracting features from %d frames", len(frames))
 
-    log.debug("Calculating ZCR")
     zcr = np.array([zero_crossing_rate(f) for f in frames])  # (N_frames, 1)
-
-    log.debug("Calculating RMS Energy")
     rms = np.array([rms_energy(f) for f in frames])  # (N_frames, 1)
-
-    log.debug("Calculating MFCCs")
     mfccs = extract_mfcc(frames)  # (N_frames, N_mfccs)
-
-    log.debug("Calculating spectral features")
     spectral = extract_spectral_features(frames)  # (N_frames, N_spectral_features)
 
     features = np.concatenate(
         [zcr, rms, mfccs, spectral], axis=1
     )  # (N_frames, N_features)
-
-    log.debug("Created %s feature matrix", features.shape)
 
     return features
