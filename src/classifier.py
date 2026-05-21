@@ -43,11 +43,6 @@ class FrameClassifier(ABC):
         """Return binary predictions (0 = noise, 1 = speech) for each frame."""
         ...
 
-    @abstractmethod
-    def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        """Return P(speech) in [0, 1] for each frame."""
-        ...
-
 
 class KNN(FrameClassifier):
     """
