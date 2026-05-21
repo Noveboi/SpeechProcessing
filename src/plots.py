@@ -42,8 +42,8 @@ import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
 
-from common import Audio
-from processor import Frame, mel_filterbank, power_spectrum
+from common import Audio, Frame
+from extractor import mel_filterbank, power_spectrum
 
 logger = logging.getLogger(__name__)
 
