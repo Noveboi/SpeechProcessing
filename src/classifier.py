@@ -83,10 +83,6 @@ class KNN(FrameClassifier):
         log.debug("k-NN predicted %d frames", len(X))
         return predictions
 
-    def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        # Column 1 is P(speech=1)
-        return self._classifier.predict_proba(X)[:, 1]  # pyright: ignore[reportArgumentType, reportCallIssue]
-
 
 class MLP(FrameClassifier):
     """
@@ -147,9 +143,6 @@ class MLP(FrameClassifier):
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         return self._classifier.predict(X)  # pyright: ignore[reportReturnType]
-
-    def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        return self._classifier.predict_proba(X)[:, 1]  # pyright: ignore[reportReturnType, reportArgumentType, reportCallIssue]
 
 
 def get(key: str) -> FrameClassifier:
