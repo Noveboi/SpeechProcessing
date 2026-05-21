@@ -9,9 +9,10 @@ import time
 from pathlib import Path
 
 import numpy as np
-import processor
 
+import extractor
 import loader
+import preprocessor
 from common import Audio
 
 log = logging.getLogger(__name__)
@@ -112,7 +113,8 @@ def _build_core(speech_dir: str, noise_dir: str) -> tuple[np.ndarray, np.ndarray
         for i, (audio, path) in enumerate(audios):
             t_start = time.perf_counter()
             try:
-                features = extractor.process(audio)  # (N_frames, N_features)
+                frames = preprocessor.process(audio)
+                features = extractor.extract(frames)  # (N_frames, N_features)
                 labels = np.full(len(features), label)  # (N_frames,)
                 X_parts.append(features)
                 y_parts.append(labels)

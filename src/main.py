@@ -8,10 +8,12 @@ from sklearn.preprocessing import StandardScaler
 import classifier
 import configuration
 import dataset
+import evaluator
 import extractor
+import loader
 import postprocessor
 import preprocessor
-from src.common import Audio, Segment
+from common import Audio, Segment
 
 log = logging.getLogger(__name__)
 
@@ -64,6 +66,10 @@ def test_multiple_audio(
         The classifier to be used in the predictions/classifications (e.g: ``KNN`` or ``MLP``)
     scaler : Any
         A scaler that normalizes the extracted features (e.g: ``StandardScaler``)
+
+    Side Effects
+    --------
+    After the predictions/classifications, the results are stored in CSV files.
     """
     for path, audio in dataset.load_test_audio(test_dir):
         log.info("Processing and predicting audio for '%s'", path)
@@ -73,6 +79,28 @@ def test_multiple_audio(
 
         segments = predict(audio, model, scaler)
         postprocessor.write_csv(segments, file_path, csv_path)
+
+
+def test_audio_with_transcript(
+    audio_path: str,
+    transcript_path: str,
+    model: classifier.FrameClassifier,
+    scaler: Any,
+) -> None:
+    """
+    Test an audio file that has a corresponding transcription (as a JSON file)
+    """
+    log.info("Testing %s performance using transcript as ground-truth", model.name)
+
+    audio = loader.load_audio(audio_path)
+    transcript = dataset.load_test_transcription(transcript_path)
+
+    segments = predict(audio, model, scaler)
+    score = evaluator.foreground_overlap(
+        transcript_segments=transcript, predicted_segments=segments
+    )
+
+    log.info("%s scored %.8f", model.name, score)
 
 
 def main():
@@ -85,6 +113,10 @@ def main():
         scaler=scaler,
         speech_dir=config[configuration.SPEECH_DIR],
         noise_dir=config[configuration.NOISE_DIR],
+    )
+
+    test_multiple_audio(
+        test_dir=config[configuration.TEST_DIR], model=model, scaler=scaler
     )
 
 

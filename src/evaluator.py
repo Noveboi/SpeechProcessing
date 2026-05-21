@@ -1,11 +1,13 @@
 import logging
 
+from common import Segment
+
 log = logging.getLogger(__name__)
 
 
 def foreground_overlap(
     transcript_segments: list[dict],
-    predicted_segments: list[dict],
+    predicted_segments: list[Segment],
 ) -> float:
     """
     Compute the percentage of transcript speech time that the system

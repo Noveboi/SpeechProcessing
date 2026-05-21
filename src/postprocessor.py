@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from scipy.ndimage import median_filter
 
-from src.common import Segment, SegmentLabel
+from common import Segment, SegmentLabel
 
 log = logging.getLogger(__name__)
 
