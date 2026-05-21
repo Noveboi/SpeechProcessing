@@ -130,8 +130,10 @@ def _build_core(speech_dir: str, noise_dir: str) -> tuple[np.ndarray, np.ndarray
 
         # 2. Noisy speech at each SNR level (all label = 1)
         for snr_db in SNR_LEVELS_DB:
-            log.debug("Mixing noise/speech @ %.3fdB SNR", snr_db)
-            noise_waveform = noise_waveforms[rng.integers(len(noise_waveforms))]
+            noise_idx = rng.integers(len(noise_waveforms))
+            log.debug("Mixing noise/speech @ %.3fdB SNR (noise_idx=%d)", snr_db, noise_idx)
+
+            noise_waveform = noise_waveforms[noise_idx]
             mixed = _mix_speech_noise(speech_audio.waveform, noise_waveform, snr_db)
             mixed_audio = Audio(mixed, speech_audio.sample_rate)
 
@@ -140,11 +142,7 @@ def _build_core(speech_dir: str, noise_dir: str) -> tuple[np.ndarray, np.ndarray
             X_parts.append(features)
             y_parts.append(np.ones(len(features), dtype=np.int8))
 
-        log.info(
-            "Processed %s (clean + %d noisy variants)",
-            speech_path.name,
-            len(SNR_LEVELS_DB),
-        )
+        log.info("Processed %s", speech_path.name)
 
     # 3. Pure noise (label = 0)
     for noise_path in noise_files:
