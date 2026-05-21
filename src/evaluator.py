@@ -1,6 +1,6 @@
 import logging
 
-from common import Segment
+from common import Segment, SegmentLabel
 
 log = logging.getLogger(__name__)
 
@@ -25,7 +25,9 @@ def foreground_overlap(
     recall : float in [0, 1], higher is more accurate
     """
     # Keep only predicted foreground segments
-    pred_foreground = [s for s in predicted_segments if s["label"] == "foreground"]
+    pred_foreground = [
+        s for s in predicted_segments if s.label == SegmentLabel.FOREGROUND
+    ]
 
     # Merge transcript segments to avoid double-counting overlapping intervals
     gt_merged = _merge_intervals(transcript_segments)
@@ -40,9 +42,7 @@ def foreground_overlap(
     total_overlap = 0.0
     for gt in gt_merged:
         for pred in pred_foreground:
-            overlap = max(
-                0.0, min(gt["end"], pred["end"]) - max(gt["start"], pred["start"])
-            )
+            overlap = max(0.0, min(gt["end"], pred.end) - max(gt["start"], pred.start))
             total_overlap += overlap
 
     recall = total_overlap / gt_total
