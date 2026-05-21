@@ -6,7 +6,7 @@ It is given the feature matrix extracted from the ``processor.py``
 and trains/tests from those features
 
 NOTE:
-    This code file has a lot of ignore statements for the linter I'm using (basedpyright).
+    This code file has a lot of ignore statements for the linter I'm using (basedpyright, ruff).
     This is due to sklearn's types being very general, returning stuff like
     `float | Any` instead of `float | np.ndarray`. Since I'm using strict type annotations,
     I needed to cut some corners to have 0 errors!
@@ -27,17 +27,26 @@ class FrameClassifier(ABC):
     Abstract base class for frame-level classifiers.
     """
 
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """The display name of the classifier."""
+        ...
+
     @abstractmethod
     def fit(self, X: np.ndarray, y: np.ndarray) -> "FrameClassifier":
         """Train on feature matrix X and binary labels y."""
+        ...
 
     @abstractmethod
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Return binary predictions (0 = noise, 1 = speech) for each frame."""
+        ...
 
     @abstractmethod
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         """Return P(speech) in [0, 1] for each frame."""
+        ...
 
 
 class KNN(FrameClassifier):
@@ -58,6 +67,10 @@ class KNN(FrameClassifier):
             metric="euclidean",  # this is simple and the best choice because the data is normalized
             n_jobs=-1,  # use CPU all cores
         )
+
+    @property
+    def name(self) -> str:
+        return "KNN"
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "KNN":
         log.info("Training k-NN  (k=%d)  on %d frames", self.k, len(X))
@@ -115,6 +128,10 @@ class MLP(FrameClassifier):
             n_iter_no_change=15,  # stop if val loss doesn't improve for 15 consecutive epochs
             verbose=True,  # keep logging enabled
         )
+
+    @property
+    def name(self) -> str:
+        return "MLP"
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "MLP":
         log.info(

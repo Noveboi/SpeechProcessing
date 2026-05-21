@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import numpy as np
 from sklearn.base import TransformerMixin
@@ -49,6 +50,31 @@ def predict(audio: Audio, model: classifier.FrameClassifier, scaler) -> list[Seg
     return segments
 
 
+def test_multiple_audio(
+    test_dir: str, model: classifier.FrameClassifier, scaler: Any
+) -> None:
+    """
+    Predict foreground/background intervals in audio files contained in the ``test_dir`` directory.
+
+    Parameters
+    --------
+    test_dir : str
+        The directory containing the WAV audio files
+    model : FrameClassifier
+        The classifier to be used in the predictions/classifications (e.g: ``KNN`` or ``MLP``)
+    scaler : Any
+        A scaler that normalizes the extracted features (e.g: ``StandardScaler``)
+    """
+    for path, audio in dataset.load_test_audio(test_dir):
+        log.info("Processing and predicting audio for '%s'", path)
+
+        file_path = path.name
+        csv_path = f"results/{model.name}_{file_path}.csv"
+
+        segments = predict(audio, model, scaler)
+        postprocessor.write_csv(segments, file_path, csv_path)
+
+
 def main():
     config = configuration.get()
 
@@ -60,15 +86,6 @@ def main():
         speech_dir=config[configuration.SPEECH_DIR],
         noise_dir=config[configuration.NOISE_DIR],
     )
-
-    for path, audio in dataset.load_test_audio(config[configuration.TEST_DIR]):
-        log.info("Processing and predicting audio for '%s'", path)
-
-        file_path = f"{path.name}"
-        csv_path = f"results/{model_name}_{file_path}.csv"
-
-        segments = predict(audio, model, scaler)
-        postprocessor.write_csv(segments, file_path, csv_path)
 
 
 if __name__ == "__main__":
