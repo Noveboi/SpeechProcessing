@@ -1,4 +1,3 @@
-import logging
 from math import floor
 from typing import Callable
 
@@ -12,8 +11,6 @@ WINDOW_FN: dict[str, Callable[[np.ndarray], np.ndarray]] = {
 }
 
 DTYPE = np.float32
-
-log = logging.getLogger(__name__)
 
 
 def split_into_frames(
@@ -38,23 +35,11 @@ def split_into_frames(
         if len(waveform) < frame_samples:
             pad_length = frame_samples - len(waveform)
             waveform = np.pad(waveform, (0, pad_length))
-            log.debug(
-                "Zero padded frame[%d] with %d additional zero samples",
-                index,
-                pad_length,
-            )
 
         frame_audio = Audio(WINDOW_FN[window_fn](waveform), audio.sample_rate)
         frames.append(Frame(frame_audio, hop_start, frame_end - 1))
         hop_start = hop_end
         index += 1
-
-    log.debug(
-        "Split audio into %d frames (hop=%dms,frame=%dms)",
-        len(frames),
-        hop_ms,
-        frame_ms,
-    )
 
     return frames
 
@@ -73,8 +58,6 @@ def pre_emphasis(audio: Audio, alpha: float = 0.97) -> Audio:
     # and past inputs samples, ``a`` represents the coefficients of the current and past output
     # samples. Since we have no feedback, ``a`` is of length 1.
     emphasized = sig.lfilter(b=[1, -alpha], a=[1.0], x=audio.waveform)
-
-    log.debug("Emphasized high-frequency components (α=%f)", alpha)
 
     return Audio(emphasized.astype(DTYPE), audio.sample_rate)  # pyright: ignore[reportAttributeAccessIssue]
 
