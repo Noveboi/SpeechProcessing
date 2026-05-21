@@ -5,7 +5,6 @@ directory structure.
 
 import json
 import logging
-import time
 from pathlib import Path
 
 import numpy as np
@@ -80,96 +79,124 @@ def load_test_audio(test_dir: str) -> list[tuple[Path, Audio]]:
     return audio_list
 
 
+SNR_LEVELS_DB = [0, 5, 10, 15, 20]  # cover the full noise range
+
+
+def _mix_speech_noise(
+    speech: np.ndarray, noise: np.ndarray, snr_db: float
+) -> np.ndarray:
+    """Mix a noise segment into a speech waveform at a target SNR."""
+    speech_power = np.mean(speech**2) + 1e-10
+    noise_power = np.mean(noise**2) + 1e-10
+    scale = np.sqrt(speech_power / (noise_power * (10 ** (snr_db / 10))))
+
+    # Tile noise to match speech length if needed
+    if len(noise) < len(speech):
+        repeats = int(np.ceil(len(speech) / len(noise)))
+        noise = np.tile(noise, repeats)
+
+    return (speech + scale * noise[: len(speech)]).astype(np.float32)
+
+
 def _build_core(speech_dir: str, noise_dir: str) -> tuple[np.ndarray, np.ndarray]:
+    rng = np.random.default_rng(1337)
+
+    speech_files = sorted(Path(speech_dir).glob("**/*.wav"))
+    noise_files = sorted(Path(noise_dir).glob("**/*.wav"))
+
+    # Pre-load all noise waveforms — they're only 6h7m total, fits in memory
+    log.info("Pre-loading %d noise files", len(noise_files))
+    noise_waveforms = []
+    for p in noise_files:
+        try:
+            noise_waveforms.append(loader.load_audio(str(p)).waveform)
+        except Exception as e:
+            log.warning("Skipping noise file %s — %s", p.name, e)
+
     X_parts, y_parts = [], []
 
-    for label, directory in [(1, speech_dir), (0, noise_dir)]:
-        class_name = "speech" if label == 1 else "noise"
-        wav_files = sorted(Path(directory).glob("**/*.wav"))
-
-        if not wav_files:
-            log.warning("No WAV files found in %s", directory)
+    for speech_path in speech_files:
+        try:
+            speech_audio = loader.load_audio(str(speech_path))
+        except Exception as e:
+            log.error("Failed to load %s — %s", speech_path.name, e)
             continue
 
-        log.info("Loading %d %s files", len(wav_files), class_name)
+        # 1. Clean speech (label = 1)
+        frames = preprocessor.process(speech_audio)
+        features = extractor.extract(frames)
+        X_parts.append(features)
+        y_parts.append(np.ones(len(features), dtype=np.int8))
 
-        audios: list[tuple[Audio, Path]] = [
-            (loader.load_audio(str(path)), path) for path in wav_files
-        ]
+        # 2. Noisy speech at each SNR level (all label = 1)
+        for snr_db in SNR_LEVELS_DB:
+            noise_waveform = noise_waveforms[rng.integers(len(noise_waveforms))]
+            mixed = _mix_speech_noise(speech_audio.waveform, noise_waveform, snr_db)
+            mixed_audio = Audio(mixed, speech_audio.sample_rate)
 
-        processed_duration = 0
-        total_duration = sum(audio.duration for audio, _ in audios)
-        times: list[float] = []
-        t_scores: list[float] = []
-
-        log.info(
-            "Processing %d %s files from %s (Total Duration: %fs)",
-            len(wav_files),
-            class_name,
-            directory,
-            total_duration,
-        )
-
-        for i, (audio, path) in enumerate(audios):
-            t_start = time.perf_counter()
-            try:
-                frames = preprocessor.process(audio)
-                features = extractor.extract(frames)  # (N_frames, N_features)
-                labels = np.full(len(features), label)  # (N_frames,)
-                X_parts.append(features)
-                y_parts.append(labels)
-                log.info(
-                    "[%s %d/%d] %s — %d frames",
-                    class_name,
-                    i + 1,
-                    len(wav_files),
-                    path.name,
-                    len(features),
-                )
-            except Exception as e:
-                log.error("Failed to process %s — %s", path.name, e)
-                continue
-
-            processed_duration += audio.duration
-            remaining_duration = total_duration - processed_duration
-
-            t_end = time.perf_counter()
-            t_current = t_end - t_start
-
-            times.append(t_current)
-            t_scores.append(t_current / audio.duration)
-
-            t_mean = np.mean(times)
-            t_mean_score = np.mean(t_scores)
-
-            log.info(
-                "T=%.3fs | AVG=%.3fs | ETA=%.3fs (%.3f%%)",
-                t_current,
-                t_mean,
-                t_mean_score * remaining_duration,
-                (processed_duration / total_duration) * 100,
-            )
+            frames = preprocessor.process(mixed_audio)
+            features = extractor.extract(frames)
+            X_parts.append(features)
+            y_parts.append(np.ones(len(features), dtype=np.int8))
 
         log.info(
-            "Finished %s files — %d total frames so far",
-            class_name,
-            sum(len(x) for x in X_parts),
+            "Processed %s (clean + %d noisy variants)",
+            speech_path.name,
+            len(SNR_LEVELS_DB),
         )
 
-    if not X_parts:
-        raise RuntimeError("No files were successfully processed.")
+    # 3. Pure noise (label = 0)
+    for noise_path in noise_files:
+        try:
+            noise_audio = loader.load_audio(str(noise_path))
+            frames = preprocessor.process(noise_audio)
+            features = extractor.extract(frames)
+            X_parts.append(features)
+            y_parts.append(np.zeros(len(features), dtype=np.int8))
+        except Exception as e:
+            log.error("Failed to process noise %s — %s", noise_path.name, e)
 
-    X = np.concatenate(X_parts, axis=0)
-    y = np.concatenate(y_parts, axis=0)
+    X = np.concatenate(X_parts)
+    y = np.concatenate(y_parts)
 
     log.info(
-        "Dataset built — %d frames total  (%d speech / %d noise)",
+        "Raw dataset — %d frames  (%d speech / %d noise)",
         len(X),
         np.sum(y == 1),
         np.sum(y == 0),
     )
 
+    # 4. Balance and shuffle
+    X, y = _balance(X, y, rng)
     return X, y
+
+
+def _balance(
+    X: np.ndarray,
+    y: np.ndarray,
+    rng: np.random.Generator,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Undersample the majority class to match the minority class count.
+
+    This avoids providing the classifiers with 60 hours worth of speech data and 6 hours worth of noise data.
+    A balanced set entails fair distribution of data that the classifiers will work with.
+    """
+    n_speech = np.sum(y == 1)
+    n_noise = np.sum(y == 0)
+    n_keep = min(n_speech, n_noise)
+
+    speech_idx = np.where(y == 1)[0]
+    noise_idx = np.where(y == 0)[0]
+
+    speech_idx = rng.choice(speech_idx, n_keep, replace=False)
+    noise_idx = rng.choice(noise_idx, n_keep, replace=False)
+
+    idx = np.concatenate([speech_idx, noise_idx])
+    idx = rng.permutation(idx)  # shuffle so classes aren't in blocks
+
+    log.info("Balanced dataset — %d frames per class (%d total)", n_keep, len(idx))
+    return X[idx], y[idx]
 
 
 def build(
@@ -198,8 +225,8 @@ def build(
 
     Returns
     -------
-    X : np.ndarray, shape (N_total_frames, N_total_features)
-    y : np.ndarray, shape (N_total_frames,)
+    X : np.ndarray, shape (N_frames, N_features)
+    y : np.ndarray, shape (N_frames,)
     """
 
     # Save X, y to train only when we want
