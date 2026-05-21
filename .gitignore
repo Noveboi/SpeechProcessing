@@ -221,5 +221,9 @@ __marimo__/
 
 # Project-specific ignores
 samples/
+test/
+train/
+speech/
+noise/
 results/
 _cache/
