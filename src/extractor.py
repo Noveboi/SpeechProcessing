@@ -197,7 +197,7 @@ def extract(frames: list[Frame]) -> np.ndarray:
 
         filter_energies = filterbank @ power  # (N_fil, N_freqs) @ (N_freqs,) = (N_fil,)
         log_energies = np.log(filter_energies + 1e-10)  # (N_fil,)
-        transformed = dct(log_energies, n=13)  # (13, )
+        transformed = dct(log_energies, norm="ortho")[:13]  # (13, )
         mfcc_list.append(transformed)
 
         entropy_list.append(spectral_entropy(power))
