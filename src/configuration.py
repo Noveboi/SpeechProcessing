@@ -124,7 +124,7 @@ def load() -> None:
 
     logging.basicConfig(
         level=_LOG_LEVEL_DICT.get(log_level.upper() if log_level else "", logging.INFO),
-        format="%(asctime)s.%(msecs)03d | %(levelname)s | %(name)s — %(message)s",
+        format="%(asctime)s.%(msecs)03d | %(levelname)s | [%(name)s] %(message)s",
         datefmt="%H:%M:%S",
     )
 
