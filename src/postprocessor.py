@@ -2,9 +2,7 @@
 Smooth out raw frame-level classifier predictions into clean segment boundaries
 """
 
-import csv
 import logging
-from pathlib import Path
 
 import numpy as np
 from scipy.ndimage import median_filter
