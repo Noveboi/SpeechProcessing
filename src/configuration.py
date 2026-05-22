@@ -104,8 +104,7 @@ def _get_cli_arguments() -> dict[str, Any | None]:
     )
 
     args = parser.parse_args()
-
-    return {
+    dict = {
         MODEL_NAME: args.model,
         USE_CACHE: args.cache,
         TEST_DIR: args.test,
@@ -113,6 +112,8 @@ def _get_cli_arguments() -> dict[str, Any | None]:
         NOISE_DIR: args.noise,
         RESULTS_DIR: args.results,
     }
+
+    return {key: value for key, value in dict.items() if value is not None}
 
 
 def load() -> None:
