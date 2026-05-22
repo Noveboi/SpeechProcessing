@@ -14,7 +14,7 @@ from common import Segment, SegmentLabel
 log = logging.getLogger(__name__)
 
 
-def smooth_predictions(
+def _smooth_predictions(
     predictions: np.ndarray,
     hop_ms: int,
     window_ms: int = 300,
@@ -68,7 +68,7 @@ def smooth_predictions(
     return smoothed
 
 
-def apply_hangover(
+def _apply_hangover(
     predictions: np.ndarray,
     hop_ms: int,
     hangover_ms: int = 400,
@@ -85,7 +85,7 @@ def apply_hangover(
     return result
 
 
-def remove_short_segments(
+def _remove_short_segments(
     predictions: np.ndarray,
     hop_ms: int,
     min_duration_ms: int = 300,
@@ -190,7 +190,7 @@ def _get_runs(
     return runs
 
 
-def extract_segments(
+def _extract_segments(
     predictions: np.ndarray,
     hop_ms: int = 10,
 ) -> list[Segment]:
@@ -227,43 +227,6 @@ def extract_segments(
     return segments
 
 
-def write_csv(
-    segments: list[Segment],
-    audio_filename: str,
-    output_path: str,
-) -> None:
-    """
-    Write the segment list to a CSV file in the required format:
-
-        Audiofile, start, end, class
-
-    Parameters
-    ----------
-    segments : list of dicts
-        As returned by extract_segments.
-    audio_filename : str
-        Name of the source audio file — written into the Audiofile column.
-    output_path : str
-        Destination path for the CSV file.
-    """
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-
-    with open(output_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["Audiofile", "start", "end", "class"])
-        writer.writeheader()
-        for segment in segments:
-            writer.writerow(
-                {
-                    "Audiofile": audio_filename,
-                    "start": segment.start,
-                    "end": segment.end,
-                    "class": segment.label.value,
-                }
-            )
-
-    log.info("CSV written → %s  (%d rows)", output_path, len(segments))
-
-
 def process(
     predictions: np.ndarray,
     hop_ms: int,
@@ -278,11 +241,11 @@ def process(
     """
     log.info("Post-processing %d frames", len(predictions))
 
-    predictions = smooth_predictions(
+    predictions = _smooth_predictions(
         predictions, hop_ms=hop_ms, window_ms=smooth_window_ms
     )
-    predictions = apply_hangover(predictions, hop_ms=hop_ms)
-    predictions = remove_short_segments(predictions, hop_ms=hop_ms)
-    segments = extract_segments(predictions, hop_ms=hop_ms)
+    predictions = _apply_hangover(predictions, hop_ms=hop_ms)
+    predictions = _remove_short_segments(predictions, hop_ms=hop_ms)
+    segments = _extract_segments(predictions, hop_ms=hop_ms)
 
     return segments

@@ -14,13 +14,14 @@ _LOG_LEVEL_DICT: dict[str, int] = {
 _CONFIG: dict[str, Any] | None = None
 
 
-SPEECH_DIR = "SPEECH_DIR"
-NOISE_DIR = "NOISE_DIR"
-TEST_DIR = "TEST_DIR"
-RESULTS_DIR = "RESULTS_DIR"
+SPEECH_DIR = "speech_dir"
+NOISE_DIR = "noise_dir"
+TEST_DIR = "test_dir"
+RESULTS_DIR = "results_dir"
+MLP_LAYER_SIZES = "layer_sizes"
 
-MODEL_NAME = "MODEL_NAME"
-USE_CACHE = "USE_CACHE"
+MODEL_NAME = "model_name"
+USE_CACHE = "use_cache"
 
 REQUIRED_KEYS = set([SPEECH_DIR, NOISE_DIR, TEST_DIR, MODEL_NAME])
 
@@ -103,6 +104,14 @@ def _get_cli_arguments() -> dict[str, Any | None]:
         default=True,
     )
 
+    parser.add_argument(
+        "--layers",
+        help="The hidden layer sizes of the MLP classifier.",
+        nargs="+",
+        type=int,
+        required=False,
+    )
+
     args = parser.parse_args()
     dict = {
         MODEL_NAME: args.model,
@@ -111,6 +120,7 @@ def _get_cli_arguments() -> dict[str, Any | None]:
         SPEECH_DIR: args.speech,
         NOISE_DIR: args.noise,
         RESULTS_DIR: args.results,
+        MLP_LAYER_SIZES: args.layers,
     }
 
     return {key: value for key, value in dict.items() if value is not None}
@@ -143,6 +153,11 @@ def load() -> None:
     log.debug("Parsed arguments: %s", args)
 
     _CONFIG = args
+
+
+def get_all() -> dict[str, Any]:
+    global _CONFIG
+    return _CONFIG
 
 
 def get(key: str) -> Any | None:

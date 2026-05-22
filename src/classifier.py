@@ -14,13 +14,15 @@ NOTE:
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Any, Callable
 
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
+import configuration
 
 log = logging.getLogger(__name__)
 
@@ -58,7 +60,7 @@ class KNN(FrameClassifier):
         IMPORTANT: Use an odd number to avoid ties.
     """
 
-    def __init__(self, k: int = 5) -> None:
+    def __init__(self, k: int = 5, **kwargs) -> None:
         self.k = k
 
         classifier = KNeighborsClassifier(
@@ -91,30 +93,18 @@ class KNN(FrameClassifier):
 
 
 class MLP(FrameClassifier):
-    """
-    2-layer MLP classifier.
-
-    Parameters
-    ----------
-    hidden_layer_sizes : tuple[int, int]
-        Number of neurons in each hidden layer.
-    learning_rate : float
-        Initial learning rate for Adam.
-    max_iter : int
-        Maximum number of training epochs.
-    """
-
     def __init__(
         self,
-        layer_sizes: tuple = (64, 32),
         learning_rate: float = 1e-3,
         max_iter: int = 500,
+        **kwargs,
     ) -> None:
-        self.hidden_layer_sizes = layer_sizes
+        self.hidden_layer_sizes = kwargs.get(configuration.MLP_LAYER_SIZES) or (64, 32)
         self.learning_rate = learning_rate
         self.max_iter = max_iter
+
         classifier = MLPClassifier(
-            hidden_layer_sizes=layer_sizes,
+            hidden_layer_sizes=self.hidden_layer_sizes,
             activation="relu",
             solver="adam",
             learning_rate_init=learning_rate,
@@ -153,13 +143,13 @@ class MLP(FrameClassifier):
         return self._pipeline.predict(X)  # pyright: ignore[reportReturnType]
 
 
-CLASSIFIERS: dict[str, Callable[[], FrameClassifier]] = {
-    "KNN": lambda: KNN(),
-    "MLP": lambda: MLP(),
+CLASSIFIERS: dict[str, Callable[[dict[str, Any]], FrameClassifier]] = {
+    "KNN": lambda kwargs: KNN(**kwargs),
+    "MLP": lambda kwargs: MLP(**kwargs),
 }
 
 
-def get(key: str) -> FrameClassifier:
+def get(key: str, **kwargs) -> FrameClassifier:
     """
     Get a frame classifier implemention based on a key string (case-insensitive).
     """
@@ -172,4 +162,4 @@ def get(key: str) -> FrameClassifier:
             f"Unknown classifier type '{key}'. Available: {CLASSIFIERS.keys()}"
         )
 
-    return classifier_factory()
+    return classifier_factory(kwargs)

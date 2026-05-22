@@ -10,9 +10,8 @@ import cache
 import classifier
 import configuration
 import dataset
-import evaluator
 import extractor
-import loader
+import files
 import postprocessor
 import preprocessor
 from common import Audio, Segment
@@ -30,7 +29,7 @@ def train(
     --------
     The trained classifier, ready to make predictions.
     """
-    clf = classifier.get(model_name)
+    clf = classifier.get(model_name, **configuration.get_all())
     clf_file_path = f"{clf.name}.pkl"
 
     try:
@@ -61,6 +60,11 @@ def predict(
     frame_ms: int = 25,
     hop_ms: int = 10,
 ) -> list[Segment]:
+    """
+    Use the train classifier to make predictions about some ``audio``.
+
+    This invokes the full pipeline, from pre-processing to post-processing.
+    """
     frames = preprocessor.process(audio, frame_ms=frame_ms, hop_ms=hop_ms)
     features: np.ndarray = extractor.extract(frames)  # (N_frames, N_features)
     predictions = model.predict(features)  # (N_frames,)
@@ -95,28 +99,7 @@ def test_multiple_audio(test_dir: str, model: classifier.FrameClassifier) -> Non
         csv_path = f"results/{model.name}_{Path(file_path).stem}.csv"
 
         segments = predict(audio, model)
-        postprocessor.write_csv(segments, file_path, csv_path)
-
-
-def test_audio_with_transcript(
-    audio_path: str,
-    transcript_path: str,
-    model: classifier.FrameClassifier,
-) -> None:
-    """
-    Test an audio file that has a corresponding transcription (as a JSON file)
-    """
-    log.info("Testing %s performance using transcript as ground-truth", model.name)
-
-    audio = loader.load_audio(audio_path)
-    transcript = dataset.load_test_transcription(transcript_path)
-
-    segments = predict(audio, model)
-    score = evaluator.foreground_overlap(
-        transcript_segments=transcript, predicted_segments=segments
-    )
-
-    log.info("%s scored %.8f", model.name, score)
+        files.write_csv(segments, file_path, csv_path)
 
 
 def main():
