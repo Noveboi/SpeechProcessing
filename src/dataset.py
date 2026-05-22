@@ -16,6 +16,8 @@ from common import Audio
 
 log = logging.getLogger(__name__)
 
+SNR_LEVELS_DB = [0, 5, 10, 15, 20, 30]  # cover the full noise range
+
 
 def _parse_time(time_str: str) -> float:
     """
@@ -79,9 +81,6 @@ def load_test_audio(test_dir: str) -> list[tuple[Path, Audio]]:
     return audio_list
 
 
-SNR_LEVELS_DB = [0, 5, 10, 15, 20]  # cover the full noise range
-
-
 def _mix_speech_noise(
     speech: np.ndarray, noise: np.ndarray, snr_db: float
 ) -> np.ndarray:
@@ -120,10 +119,10 @@ def _build_core(
 
     # Pre-load all noise waveforms — they're only 6h7m total, fits in memory
     log.info("Pre-loading %d noise files", len(noise_files))
-    noise_waveforms = []
+    noise_audio: list[Audio] = []
     for p in noise_files:
         try:
-            noise_waveforms.append(loader.load_audio(str(p)).waveform)
+            noise_audio.append(loader.load_audio(str(p)))
         except Exception as e:
             log.warning("Skipping noise file %s — %s", p.name, e)
 
@@ -144,12 +143,12 @@ def _build_core(
 
         # 2. Noisy speech at each SNR level (all label = 1)
         for snr_db in SNR_LEVELS_DB:
-            noise_idx = rng.integers(len(noise_waveforms))
+            noise_idx = rng.integers(len(noise_audio))
             log.debug(
                 "Mixing noise/speech @ %.3fdB SNR (noise_idx=%d)", snr_db, noise_idx
             )
 
-            noise_waveform = noise_waveforms[noise_idx]
+            noise_waveform = noise_audio[noise_idx].waveform
             mixed = _mix_speech_noise(speech_audio.waveform, noise_waveform, snr_db)
             mixed_audio = Audio(mixed, speech_audio.sample_rate)
 
@@ -161,15 +160,11 @@ def _build_core(
         log.info("Processed '%s'", speech_path.name)
 
     # 3. Pure noise (label = 0)
-    for noise_path in noise_files:
-        try:
-            noise_audio = loader.load_audio(str(noise_path))
-            frames = preprocessor.process(noise_audio)
-            features = extractor.extract(frames)
-            X_parts.append(features)
-            y_parts.append(np.zeros(len(features), dtype=np.int8))
-        except Exception as e:
-            log.error("Failed to process noise %s — %s", noise_path.name, e)
+    for noise in noise_audio:
+        frames = preprocessor.process(noise)
+        features = extractor.extract(frames)
+        X_parts.append(features)
+        y_parts.append(np.zeros(len(features), dtype=np.int8))
 
     X = np.concatenate(X_parts)
     y = np.concatenate(y_parts)

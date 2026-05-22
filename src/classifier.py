@@ -12,6 +12,8 @@ NOTE:
     I needed to cut some corners to have 0 errors!
 """
 
+import hashlib
+import json
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, Callable
@@ -46,6 +48,11 @@ class FrameClassifier(ABC):
     @abstractmethod
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Return binary predictions (0 = noise, 1 = speech) for each frame."""
+        ...
+
+    @abstractmethod
+    def hash(self) -> str:
+        """Hash based on attributes"""
         ...
 
 
@@ -90,6 +97,15 @@ class KNN(FrameClassifier):
         predictions = self._pipeline.predict(X)
         log.debug("k-NN predicted %d frames", len(X))
         return predictions
+
+    def hash(self) -> str:
+        payload = {
+            "classifier": self.name,
+            "k": self.k,
+        }
+
+        encoded = json.dumps(payload, sort_keys=True).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
 
 
 class MLP(FrameClassifier):
@@ -143,6 +159,17 @@ class MLP(FrameClassifier):
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         return self._pipeline.predict(X)  # pyright: ignore[reportReturnType]
+
+    def hash(self) -> str:
+        payload = {
+            "classifier": self.name,
+            "hidden_layer_sizes": self.hidden_layer_sizes,
+            "learning_rate": self.learning_rate,
+            "max_iter": self.max_iter,
+        }
+
+        encoded = json.dumps(payload, sort_keys=True).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
 
 
 CLASSIFIERS: dict[str, Callable[[dict[str, Any]], FrameClassifier]] = {

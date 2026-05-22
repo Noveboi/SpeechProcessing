@@ -29,15 +29,14 @@ def train(
     --------
     The trained classifier, ready to make predictions.
     """
-    clf_file_path = f"{model_name}.pkl"
+    clf = classifier.get(model_name, **configuration.get_all())
+    clf_file_path = f"{clf.name}_{clf.hash()}.pkl"
 
     stored_clf = cache.load(clf_file_path)
     if stored_clf:
         return stored_clf
 
-    log.info("No persisted model found for %s at '%s'", model_name, clf_file_path)
-
-    clf = classifier.get(model_name, **configuration.get_all())
+    log.info("No persisted model found for %s at '%s'", clf.name, clf_file_path)
 
     data = dataset.create(
         speech_dir=speech_dir,
