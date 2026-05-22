@@ -34,15 +34,16 @@ def train(
     clf = classifier.get(model_name)
 
     cache_dir = Path("_cache")
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
     clf_file_path = cache_dir / f"{clf.name}.pkl"
-    cache_dir.parent.mkdir(parents=True, exist_ok=True)
 
     try:
         with open(clf_file_path, "rb") as f:
             log.info("Loading %s model into memory from '%s'", clf.name, clf_file_path)
             clf = pickle.load(f)
     except OSError:
-        log.info("No persisted model found for %s", clf.name)
+        log.info("No persisted model found for %s at '%s'", clf.name, clf_file_path)
 
         data = dataset.build(
             speech_dir=speech_dir,
