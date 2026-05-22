@@ -6,6 +6,7 @@ into a set of features which can be used downstream for statistical analysis/mac
 import logging
 
 import numpy as np
+from scipy.fftpack import dct
 
 from common import Frame
 
@@ -123,31 +124,6 @@ def _hz_to_mel(hz: float | np.ndarray) -> float | np.ndarray:
 
 def _mel_to_hz(mel: np.ndarray) -> np.ndarray:
     return 700.0 * (10.0 ** (mel / 2595.0) - 1.0)
-
-
-def dct(log_energies: np.ndarray, n_coeffs: int = 13) -> np.ndarray:
-    """
-    Apply a DCT-II to the log filterbank energies and return
-    the first n_coeffs cepstral coefficients.
-
-    Parameters
-    ----------
-    log_energies : np.ndarray, shape (N_filters,)
-        Log Mel filterbank energy vector.
-    n_coeffs : int
-        Number of cepstral coefficients to return (default: 13).
-
-    Returns
-    -------
-    coeffs : np.ndarray, shape (N_coeffs,)
-        The raw MFCC vector. This describes the spectral envelope of the frame.
-    """
-    M = len(log_energies)
-    # Build the DCT-II matrix explicitly — shape (M, M)
-    n = np.arange(M)  # filter indices 0..M-1
-    k = np.arange(n_coeffs).reshape(-1, 1)
-    dct_matrix = np.cos(np.pi * k * (n + 0.5) / M)  # shape (n_coeffs, M)
-    return (dct_matrix @ log_energies).astype(DTYPE)  # no slicing needed
 
 
 def delta(coeffs_matrix: np.ndarray, N: int = 2) -> np.ndarray:
