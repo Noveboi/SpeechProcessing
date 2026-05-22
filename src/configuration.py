@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import sys
 
 from dotenv import load_dotenv
 
@@ -15,6 +16,8 @@ SPEECH_DIR = "SPEECH_DIR"
 NOISE_DIR = "NOISE_DIR"
 TEST_DIR = "TEST_DIR"
 MODEL_NAME = "MODEL"
+
+REQUIRED_KEYS = set([SPEECH_DIR, NOISE_DIR, TEST_DIR, MODEL_NAME])
 
 logging.addLevelName(logging.DEBUG, "DBG")
 logging.addLevelName(logging.INFO, "INF")
@@ -75,4 +78,11 @@ def get() -> dict[str, str]:
     cli_args = _get_cli_arguments()
 
     args = env_args | cli_args  # CLI args will overwrite ENV args on conflict
-    return {key: value for key, value in args.items() if value is not None}
+    args = {key: value for key, value in args.items() if value is not None}
+
+    missing_args = REQUIRED_KEYS - set(args.keys())
+    if len(missing_args) > 0:
+        print(f"MISSING ARGUMENTS: {missing_args}")
+        sys.exit(1)
+
+    return args
