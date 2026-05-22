@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -10,12 +11,14 @@ _LOG_LEVEL_DICT: dict[str, int] = {
     "INFO": logging.INFO,
     "WARNING": logging.WARNING,
 }
+_CONFIG: dict[str, Any] | None = None
 
 
 SPEECH_DIR = "SPEECH_DIR"
 NOISE_DIR = "NOISE_DIR"
 TEST_DIR = "TEST_DIR"
-MODEL_NAME = "MODEL"
+MODEL_NAME = "MODEL_NAME"
+USE_CACHE = "USE_CACHE"
 
 REQUIRED_KEYS = set([SPEECH_DIR, NOISE_DIR, TEST_DIR, MODEL_NAME])
 
@@ -39,7 +42,7 @@ def _get_required_env(key: str) -> str:
     return value
 
 
-def _get_env_arguments() -> dict[str, str | None]:
+def _get_env_arguments() -> dict[str, Any | None]:
     return {
         SPEECH_DIR: _get_required_env(SPEECH_DIR),
         NOISE_DIR: _get_required_env(NOISE_DIR),
@@ -48,7 +51,7 @@ def _get_env_arguments() -> dict[str, str | None]:
     }
 
 
-def _get_cli_arguments() -> dict[str, str | None]:
+def _get_cli_arguments() -> dict[str, Any | None]:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -59,12 +62,18 @@ def _get_cli_arguments() -> dict[str, str | None]:
         required=False,
     )
 
+    parser.add_argument(
+        "--cache",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+
     args = parser.parse_args()
 
-    return {MODEL_NAME: args.model}
+    return {MODEL_NAME: args.model, USE_CACHE: args.cache}
 
 
-def get() -> dict[str, str]:
+def load() -> dict[str, Any]:
     load_dotenv()
     log_level = _get_env("LOG_LEVEL")
 
@@ -73,6 +82,8 @@ def get() -> dict[str, str]:
         format="%(asctime)s.%(msecs)03d | %(levelname)s | %(name)s — %(message)s",
         datefmt="%H:%M:%S",
     )
+
+    log = logging.getLogger(__name__)
 
     env_args = _get_env_arguments()
     cli_args = _get_cli_arguments()
@@ -84,4 +95,14 @@ def get() -> dict[str, str]:
     if len(missing_args) > 0:
         raise ValueError(f"MISSING ARGUMENTS! {missing_args}")
 
-    return args
+    log.debug("Parsed arguments: %s", args)
+
+    _CONFIG = args
+    return _CONFIG
+
+
+def get(key: str) -> Any | None:
+    if _CONFIG is None:
+        raise ValueError("Tried to retrieve configuration before ``load``")
+
+    return _CONFIG.get(key, default=None)

@@ -1,13 +1,12 @@
 import logging
-import pickle
 import sys
-from pathlib import Path
 from typing import Any
 
 import numpy as np
 from sklearn.base import TransformerMixin
 from sklearn.preprocessing import StandardScaler
 
+import cache
 import classifier
 import configuration
 import dataset
@@ -32,16 +31,10 @@ def train(
     The trained classifier, ready to make predictions.
     """
     clf = classifier.get(model_name)
-
-    cache_dir = Path("_cache")
-    cache_dir.mkdir(parents=True, exist_ok=True)
-
-    clf_file_path = cache_dir / f"{clf.name}.pkl"
+    clf_file_path = f"{clf.name}.pkl"
 
     try:
-        with open(clf_file_path, "rb") as f:
-            log.info("Loading %s model into memory from '%s'", clf.name, clf_file_path)
-            clf = pickle.load(f)
+        clf = cache.load(clf_file_path)
     except OSError:
         log.info("No persisted model found for %s at '%s'", clf.name, clf_file_path)
 
@@ -58,10 +51,7 @@ def train(
         X_train_scaled = scaler.fit_transform(X_train)
 
         clf.fit(X_train_scaled, y_train)
-
-        with open(clf_file_path, "wb") as f:
-            log.info("Saving model data of %s into '%s'", clf.name, clf_file_path)
-            pickle.dump(clf, f, protocol=pickle.HIGHEST_PROTOCOL)
+        cache.dump(clf, clf_file_path)
 
     return clf
 
@@ -134,7 +124,7 @@ def test_audio_with_transcript(
 
 
 def main():
-    config = configuration.get()
+    config = configuration.load()
 
     model_name = config[configuration.MODEL_NAME]
     scaler = StandardScaler()
