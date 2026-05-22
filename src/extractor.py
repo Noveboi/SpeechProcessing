@@ -225,15 +225,13 @@ def extract(frames: list[Frame]) -> np.ndarray:
 
         entropy_list.append(spectral_entropy(power))
 
+    zcr = np.array(zcr_list)  # (N_frames, 1)
+    rms = np.array(rms_list)  # (N_frames, 1)
+    entropy = np.array(entropy_list)  # (N_frames, 1)
     mfccs = np.array(mfcc_list)  # (N_frames, 13)
     mfccs = cmvn(mfccs)  # (N_frames, 13)
     deltas = delta(mfccs)  # (N_frames, 13)
     ddeltas = delta_delta(mfccs)  # (N_frames, 13)
     mfccs_all = np.concatenate([mfccs, deltas, ddeltas], axis=1)  # (N_frames, 39)
 
-    features = np.concatenate(
-        [np.array(zcr_list), np.array(rms_list), mfccs_all, np.array(entropy_list)],
-        axis=1,
-    )
-
-    return features
+    return np.concatenate([zcr, rms, mfccs_all, entropy], axis=1)
