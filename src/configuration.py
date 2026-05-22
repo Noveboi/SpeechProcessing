@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 
@@ -35,6 +36,31 @@ def _get_required_env(key: str) -> str:
     return value
 
 
+def _get_env_arguments() -> dict[str, str | None]:
+    return {
+        SPEECH_DIR: _get_required_env(SPEECH_DIR),
+        NOISE_DIR: _get_required_env(NOISE_DIR),
+        TEST_DIR: _get_required_env(TEST_DIR),
+        MODEL_NAME: _get_env(MODEL_NAME),
+    }
+
+
+def _get_cli_arguments() -> dict[str, str | None]:
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "-m",
+        "--model",
+        help="The classifier to use (KNN or MLP)",
+        type=str,
+        required=False,
+    )
+
+    args = parser.parse_args()
+
+    return {MODEL_NAME: args.model}
+
+
 def get() -> dict[str, str]:
     load_dotenv()
     log_level = _get_env("LOG_LEVEL")
@@ -45,9 +71,8 @@ def get() -> dict[str, str]:
         datefmt="%H:%M:%S",
     )
 
-    return {
-        SPEECH_DIR: _get_required_env(SPEECH_DIR),
-        NOISE_DIR: _get_required_env(NOISE_DIR),
-        TEST_DIR: _get_required_env(TEST_DIR),
-        MODEL_NAME: _get_required_env(MODEL_NAME),
-    }
+    env_args = _get_env_arguments()
+    cli_args = _get_cli_arguments()
+
+    args = env_args | cli_args  # CLI args will overwrite ENV args on conflict
+    return {key: value for key, value in args if value is not None}

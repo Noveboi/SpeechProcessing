@@ -131,7 +131,9 @@ def _build_core(speech_dir: str, noise_dir: str) -> tuple[np.ndarray, np.ndarray
         # 2. Noisy speech at each SNR level (all label = 1)
         for snr_db in SNR_LEVELS_DB:
             noise_idx = rng.integers(len(noise_waveforms))
-            log.debug("Mixing noise/speech @ %.3fdB SNR (noise_idx=%d)", snr_db, noise_idx)
+            log.debug(
+                "Mixing noise/speech @ %.3fdB SNR (noise_idx=%d)", snr_db, noise_idx
+            )
 
             noise_waveform = noise_waveforms[noise_idx]
             mixed = _mix_speech_noise(speech_audio.waveform, noise_waveform, snr_db)
@@ -260,3 +262,50 @@ def build(
             np.save(yf, y)
 
     return X, y
+
+
+# Demo the functionality of dataset.py
+if __name__ == "__main__":
+    import sys
+
+    import matplotlib.pyplot as plt
+    from scipy.io import wavfile
+
+    import loader
+
+    argv = sys.argv
+
+    if len(argv) == 1:
+        print(f"USAGE: {argv[0]} <COMMAND> [...PARAMETERS]")
+        sys.exit(1)
+
+    command = argv[1]
+    parameters = argv[2:]
+
+    if command == "mix":
+        if len(parameters) < 3:
+            print(f"USAGE: {argv[0]} mix <SPEECH_FILE> <SNR_DB> [NOISE_FILE]")
+            sys.exit(1)
+
+        speech_path, noise_path, snr_db = parameters
+        speech = loader.load_audio(speech_path)
+        noise = loader.load_audio(noise_path)
+        mixed = _mix_speech_noise(speech.waveform, noise.waveform, float(snr_db))
+
+        window_sec = 0.2
+        window_samp = int(window_sec * speech.sample_rate)
+        t = np.linspace(0.0, window_sec, window_samp)
+
+        fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=True)
+
+        ax1.plot(t, speech.waveform[:window_samp])
+        ax1.set_title("Original speech (zoomed)")
+
+        ax2.plot(t, mixed[:window_samp])
+        ax2.set_title(f"Mixed speech w/ noise @ {snr_db} dB SNR (zoomed)")
+
+        plt.show()
+
+        file_name = f"mixed_{snr_db}db.wav"
+        print(f"Saving to {file_name}")
+        wavfile.write(file_name, rate=speech.sample_rate, data=mixed)

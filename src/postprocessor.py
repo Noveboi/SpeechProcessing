@@ -16,8 +16,8 @@ log = logging.getLogger(__name__)
 
 def smooth_predictions(
     predictions: np.ndarray,
+    hop_ms: int,
     window_ms: int = 300,
-    hop_ms: int = 10,
 ) -> np.ndarray:
     """
     Apply a median filter to the "raw" predictions.
@@ -40,7 +40,7 @@ def smooth_predictions(
         Should be long enough to absorb isolated wrong predictions but
         short enough not to blur genuine short segments.
     hop_ms : int
-        Frame hop size used during feature extraction (default: 10).
+        Frame hop size used during feature extraction .
 
     Returns
     -------
@@ -70,8 +70,8 @@ def smooth_predictions(
 
 def apply_hangover(
     predictions: np.ndarray,
+    hop_ms: int,
     hangover_ms: int = 400,
-    hop_ms: int = 10,
 ) -> np.ndarray:
     hangover_frames = hangover_ms // hop_ms
     result = predictions.copy()
@@ -87,8 +87,8 @@ def apply_hangover(
 
 def remove_short_segments(
     predictions: np.ndarray,
+    hop_ms: int,
     min_duration_ms: int = 300,
-    hop_ms: int = 10,
 ) -> np.ndarray:
     """
     Merge segments shorter than min_duration_ms into their neighbours.
@@ -105,7 +105,7 @@ def remove_short_segments(
     min_duration_ms : int
         Minimum allowed segment duration in milliseconds (default: 300).
     hop_ms : int
-        Frame hop size in milliseconds (default: 10).
+        Frame hop size in milliseconds .
 
     Returns
     -------
@@ -200,7 +200,7 @@ def extract_segments(
     predictions : np.ndarray, shape (N_frames,)
         Fully post-processed binary predictions.
     hop_ms : int
-        Frame hop size in milliseconds (default: 10).
+        Frame hop size in milliseconds .
     """
     runs = _get_runs(predictions)
     hop_secs = hop_ms / 1000.0
@@ -264,8 +264,8 @@ def write_csv(
 
 def process(
     predictions: np.ndarray,
+    hop_ms: int,
     smooth_window_ms: int = 300,
-    hop_ms: int = 10,
 ) -> list[Segment]:
     """
     Full post-processing pipeline.
@@ -277,8 +277,8 @@ def process(
     log.info("Post-processing %d frames", len(predictions))
 
     predictions = smooth_predictions(predictions, smooth_window_ms, hop_ms)
-    predictions = apply_hangover(predictions)
-    predictions = remove_short_segments(predictions)
+    predictions = apply_hangover(predictions, hop_ms)
+    predictions = remove_short_segments(predictions, hop_ms)
     segments = extract_segments(predictions, hop_ms)
 
     return segments
