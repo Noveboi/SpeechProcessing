@@ -217,8 +217,6 @@ def _balance(
 def build(
     speech_dir: str,
     noise_dir: str,
-    cache_dir: str = "_cache",
-    use_cache: bool = True,
 ) -> tuple[np.ndarray, np.ndarray] | None:
     """
     Process all WAV files under speech_dir and noise_dir and return a labelled feature matrix.
@@ -233,10 +231,6 @@ def build(
         Path to the directory containing speech WAV files.
     noise_dir : str
         Path to the directory containing noise WAV files.
-    cache_dir : str, optional
-        Path to the cache which stores ``X_train`` and ``y_train`` data. (default=``"_cache"``)
-    use_cache : bool, optional
-        Whether to use the cached ``X_train`` and ``y_train`` data (if they exist) or not. (default=``True``)
 
     Returns
     -------
@@ -244,42 +238,7 @@ def build(
     y : np.ndarray, shape (N_frames,)
     """
 
-    # Save X, y to train only when we want
-    cache_path = Path(cache_dir)
-    X_dir = cache_path / "X.npy"
-    y_dir = cache_path / "y.npy"
-
-    try:
-        if not use_cache:
-            log.info("Skipping cache (disabled by user)")
-            raise OSError("Cache skipped")
-
-        X = np.load(X_dir)
-        y = np.load(y_dir)
-
-        log.info("Loaded X_train data from cache (%s)", X_dir)
-        log.info("Loaded y_train data from cache (%s)", y_dir)
-    except OSError:
-        if use_cache:
-            log.warning("No cached files found, begin training...")
-
-        build_result = _build_core(speech_dir, noise_dir)
-        if not build_result:
-            return None
-
-        X, y = build_result
-
-        # Ensure parent directories exist
-        Path(X_dir).parent.mkdir(parents=True, exist_ok=True)
-        Path(y_dir).parent.mkdir(parents=True, exist_ok=True)
-
-        with open(X_dir, mode="wb") as Xf:
-            np.save(Xf, X)
-
-        with open(y_dir, mode="wb") as yf:
-            np.save(yf, y)
-
-    return X, y
+    return _build_core(speech_dir, noise_dir)
 
 
 # Demo the functionality of dataset.py

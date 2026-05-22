@@ -1,5 +1,7 @@
 import logging
+import pickle
 import sys
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -31,22 +33,36 @@ def train(
     """
     clf = classifier.get(model_name)
 
-    data = dataset.build(
-        speech_dir=speech_dir,
-        noise_dir=noise_dir,
-    )
+    cache_dir = Path("_cache")
+    clf_file_path = cache_dir / f"{clf.name}.pkl"
+    cache_dir.parent.mkdir(parents=True, exist_ok=True)
 
-    if not data:
-        log.fatal("Training could not finish")
-        sys.exit(1)
+    try:
+        with open(clf_file_path, "rb") as f:
+            log.info("Loading %s model into memory from '%s'", clf.name, clf_file_path)
+            clf = pickle.load(f)
+    except OSError:
+        log.info("No persisted model found for %s", clf.name)
 
-    X_train, y_train = data
+        data = dataset.build(
+            speech_dir=speech_dir,
+            noise_dir=noise_dir,
+        )
 
-    X_train_scaled = scaler.fit_transform(X_train)
+        if not data:
+            log.fatal("Training could not finish")
+            sys.exit(1)
 
-    model = clf.fit(X_train_scaled, y_train)
+        X_train, y_train = data
+        X_train_scaled = scaler.fit_transform(X_train)
 
-    return model
+        clf.fit(X_train_scaled, y_train)
+
+        with open(clf_file_path, "wb") as f:
+            log.info("Saving model data of %s into '%s'", clf.name, clf_file_path)
+            pickle.dump(clf, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    return clf
 
 
 def predict(

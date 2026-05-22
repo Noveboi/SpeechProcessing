@@ -11,6 +11,7 @@ _LOG_LEVEL_DICT: dict[str, int] = {
     "WARNING": logging.WARNING,
 }
 
+
 SPEECH_DIR = "SPEECH_DIR"
 NOISE_DIR = "NOISE_DIR"
 TEST_DIR = "TEST_DIR"
