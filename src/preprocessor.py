@@ -63,7 +63,11 @@ def pre_emphasis(audio: Audio, alpha: float = 0.97) -> Audio:
 
 
 def remove_dc_offset(audio: Audio) -> Audio:
-    """Subtract the signal mean to centre the waveform around zero."""
+    """
+    Subtract the signal mean to centre the waveform around zero.
+
+    This gives more predictable and normalized/standardized waveforms which benefit the feature extraction process.
+    """
     corrected = audio.waveform - np.mean(audio.waveform)
     return Audio(corrected.astype(DTYPE), audio.sample_rate)
 
