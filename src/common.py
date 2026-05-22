@@ -4,8 +4,11 @@ This module contains common types and utilities used throughout the system.
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import TypeAlias
 
 import numpy as np
+
+Seconds: TypeAlias = float
 
 
 class SegmentLabel(Enum):
@@ -19,7 +22,7 @@ class Audio:
     sample_rate: int
 
     @property
-    def duration(self) -> float:
+    def duration(self) -> Seconds:
         return self.sample_count / self.sample_rate
 
     @property
@@ -36,6 +39,10 @@ class Frame:
 
 @dataclass(frozen=True)
 class Segment:
-    start: float
-    end: float
+    start: Seconds
+    end: Seconds
     label: SegmentLabel
+
+    @property
+    def duration(self) -> Seconds:
+        return self.end - self.start
