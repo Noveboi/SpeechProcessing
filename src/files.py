@@ -6,7 +6,9 @@ from common import Segment
 
 log = logging.getLogger(__name__)
 
-def read_csv(file_path: str)
+
+def read_csv(file_path: str): ...
+
 
 def write_csv(
     segments: list[Segment],

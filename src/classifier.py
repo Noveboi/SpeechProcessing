@@ -99,7 +99,9 @@ class MLP(FrameClassifier):
         max_iter: int = 500,
         **kwargs,
     ) -> None:
-        self.hidden_layer_sizes = kwargs.get(configuration.MLP_LAYER_SIZES) or (64, 32)
+        self.hidden_layer_sizes = tuple(
+            kwargs.get(configuration.MLP_LAYER_SIZES) or (64, 32)
+        )
         self.learning_rate = learning_rate
         self.max_iter = max_iter
 

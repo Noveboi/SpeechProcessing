@@ -33,11 +33,11 @@ logging.addLevelName(logging.CRITICAL, "CRT")
 
 
 def _get_env(key: str) -> str | None:
-    return os.getenv(f"{_ENV_PREFIX}_{key}")
+    return os.getenv(f"{_ENV_PREFIX}_{key.upper()}")
 
 
 def _get_required_env(key: str) -> str:
-    value = _get_env(key)
+    value = _get_env(key.upper())
 
     if not value:
         raise ValueError(f"Required environment variable '{key}' has not been set!")
@@ -140,8 +140,8 @@ def load() -> None:
 
     log = logging.getLogger(__name__)
 
-    env_args = _get_env_arguments()
     cli_args = _get_cli_arguments()
+    env_args = _get_env_arguments()
 
     args = env_args | cli_args  # CLI args will overwrite ENV args on conflict
     args = {key: value for key, value in args.items() if value is not None}
