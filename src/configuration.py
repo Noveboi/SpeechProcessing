@@ -157,16 +157,15 @@ def load() -> None:
 
 def get_all() -> dict[str, Any]:
     global _CONFIG
+
+    if not _CONFIG:
+        raise ValueError("Tried to retrieve configuration before ``load``")
+
     return _CONFIG
 
 
 def get(key: str) -> Any | None:
-    global _CONFIG
-
-    if _CONFIG is None:
-        raise ValueError("Tried to retrieve configuration before ``load``")
-
-    return _CONFIG.get(key)
+    return get_all().get(key)
 
 
 def get_required_str(key: str) -> str:
