@@ -153,25 +153,38 @@ def _get_runs(
     predictions: np.ndarray,
 ) -> list[tuple[int, int, int]]:
     """
+    Loops through the prediction vector ``y`` and concatenates adjacent elements that are equal.
+
+    Example
+    --------
+    Input: [0, 0, 1, 0, 1, 1, 1, 1, 1]
+    Output: [
+        (0, 0, 2),
+        (1, 2, 3),
+        (0, 3, 4),
+        (1, 4, 9)
+    ]
+
     Returns
-    -------
+    --------
     runs : list of (label, start_frame, end_frame)
         end_frame is exclusive — the run covers [start_frame, end_frame).
     """
-    if len(predictions) == 0:
+    N_pred = len(predictions)
+    if N_pred == 0:
         return []
 
     runs: list[tuple[int, int, int]] = []
-    label: int = predictions[0]
+    current_label: int = predictions[0]
     start = 0
 
-    for i in range(1, len(predictions)):
-        if predictions[i] != label:
-            runs.append((int(label), start, i))
+    for i in range(1, N_pred):
+        if predictions[i] != current_label:
+            runs.append((int(current_label), start, i))
             start = i
-            label = predictions[i]
+            current_label = predictions[i]
 
-    runs.append((int(label), start, len(predictions)))
+    runs.append((int(current_label), start, N_pred))
     return runs
 
 
