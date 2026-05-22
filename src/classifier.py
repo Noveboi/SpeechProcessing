@@ -14,6 +14,7 @@ NOTE:
 
 import logging
 from abc import ABC, abstractmethod
+from typing import Callable
 
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
@@ -139,15 +140,23 @@ class MLP(FrameClassifier):
         return self._classifier.predict(X)  # pyright: ignore[reportReturnType]
 
 
+CLASSIFIERS: dict[str, Callable[[], FrameClassifier]] = {
+    "KNN": lambda: KNN(),
+    "MLP": lambda: MLP(),
+}
+
+
 def get(key: str) -> FrameClassifier:
     """
     Get a frame classifier implemention based on a key string (case-insensitive).
     """
     clean_key = key.strip().upper().replace("-", "")
 
-    if clean_key == "KNN":
-        return KNN()
-    if clean_key == "MLP":
-        return MLP()
+    classifier_factory = CLASSIFIERS.get(clean_key)
 
-    raise ValueError(f"Unknown classifier type '{key}'")
+    if not classifier_factory:
+        raise ValueError(
+            f"Unknown classifier type '{key}'. Available: {CLASSIFIERS.keys()}"
+        )
+
+    return classifier_factory()

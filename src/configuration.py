@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import sys
 
 from dotenv import load_dotenv
 
@@ -82,7 +81,6 @@ def get() -> dict[str, str]:
 
     missing_args = REQUIRED_KEYS - set(args.keys())
     if len(missing_args) > 0:
-        print(f"MISSING ARGUMENTS: {missing_args}")
-        sys.exit(1)
+        raise ValueError(f"MISSING ARGUMENTS! {missing_args}")
 
     return args

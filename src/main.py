@@ -1,4 +1,5 @@
 import logging
+import sys
 from typing import Any
 
 import numpy as np
@@ -30,10 +31,16 @@ def train(
     """
     clf = classifier.get(model_name)
 
-    X_train, y_train = dataset.build(
+    data = dataset.build(
         speech_dir=speech_dir,
         noise_dir=noise_dir,
     )
+
+    if not data:
+        log.fatal("Training could not finish")
+        sys.exit(1)
+
+    X_train, y_train = data
 
     X_train_scaled = scaler.fit_transform(X_train)
 

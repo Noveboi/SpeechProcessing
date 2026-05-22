@@ -98,11 +98,25 @@ def _mix_speech_noise(
     return (speech + scale * noise[: len(speech)]).astype(np.float32)
 
 
-def _build_core(speech_dir: str, noise_dir: str) -> tuple[np.ndarray, np.ndarray]:
+def _build_core(
+    speech_dir: str, noise_dir: str
+) -> tuple[np.ndarray, np.ndarray] | None:
     rng = np.random.default_rng(1337)
+
+    log.info("Using speech file directory: %s", speech_dir)
+    log.info("Using noise file directory: %s", noise_dir)
 
     speech_files = sorted(Path(speech_dir).glob("**/*.wav"))
     noise_files = sorted(Path(noise_dir).glob("**/*.wav"))
+
+    if len(speech_files) == 0:
+        log.critical("No speech files found for training")
+
+    if len(noise_files) == 0:
+        log.critical("No noise files found for training")
+
+    if len(speech_files) == 0 or len(noise_files) == 0:
+        return None
 
     # Pre-load all noise waveforms — they're only 6h7m total, fits in memory
     log.info("Pre-loading %d noise files", len(noise_files))
@@ -205,7 +219,7 @@ def build(
     noise_dir: str,
     cache_dir: str = "_cache",
     use_cache: bool = True,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray] | None:
     """
     Process all WAV files under speech_dir and noise_dir and return a labelled feature matrix.
 
@@ -249,7 +263,11 @@ def build(
         if use_cache:
             log.warning("No cached files found, begin training...")
 
-        X, y = _build_core(speech_dir, noise_dir)
+        build_result = _build_core(speech_dir, noise_dir)
+        if not build_result:
+            return None
+
+        X, y = build_result
 
         # Ensure parent directories exist
         Path(X_dir).parent.mkdir(parents=True, exist_ok=True)
