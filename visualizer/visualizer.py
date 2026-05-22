@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 """
 Usage:
     python visualizer.py <audio_file> <csv_file>
