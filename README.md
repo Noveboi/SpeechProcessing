@@ -2,6 +2,9 @@
 
 A simple voice activity detection (VAD) system written in Python.
 
+## Purpose
+It takes an audio file, and it describes the parts which it detects speech and the parts where it detects noise (no speech / background noise). That's it.
+
 ## Modules
 
 The system is quite modular, some would say "overly modular" 👀👀. I tried to separate each clear concept into its own Python module. Because this is a university project, I haven't taken the time to refactor the project to use Python packages for even more separation and organization, but I don't consider it necessary due to the project's size.
