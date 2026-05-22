@@ -17,8 +17,6 @@ log = logging.getLogger(__name__)
 def load_audio(filename: str, sample_rate: int = 16_000) -> Audio:
     fs, samples = wavfile.read(filename)
 
-    log.debug("Read '%s' / shape=%s, fs=%d Hz", filename, samples.shape, fs)
-
     # Standardize the numeric format of the samples to float32
     samples = _convert_to_float32(samples)
 
