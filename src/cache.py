@@ -17,8 +17,7 @@ def _ensure_dir(file_name: str) -> Path:
 
 def _is_disabled() -> bool:
     flag = configuration.get(configuration.USE_CACHE)
-
-    return not flag if flag else False
+    return flag is False  # only disabled when explicitly set to False
 
 
 def dump(obj: Any, file_name: str) -> None:
