@@ -29,15 +29,20 @@ def load_audio(filename: str, sample_rate: int = 16_000) -> Audio:
     waveform = _resample(samples, original_fs=fs, target_fs=sample_rate)
     audio = Audio(waveform, sample_rate)
 
-    log.info("Audio loaded @ %d Hz / %f secs", audio.sample_rate, audio.duration)
+    log.info(
+        "Audio '%s' loaded @ %d Hz / %d s (og_dtype=%s, og_fs=%d Hz)",
+        filename,
+        audio.sample_rate,
+        audio.duration,
+        samples.dtype,
+        fs,
+    )
 
     return audio
 
 
 def _convert_to_float32(audio: np.ndarray) -> np.ndarray:
     dtype = audio.dtype
-
-    log.debug("Detected audio type as %s", dtype)
 
     if dtype == np.int16:
         return audio.astype(np.float32) / 32_768.0  # 2^15
