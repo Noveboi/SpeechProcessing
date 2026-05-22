@@ -107,7 +107,6 @@ class MLP(FrameClassifier):
             activation="relu",
             solver="adam",
             learning_rate_init=learning_rate,
-            learning_rate="adaptive",  # reduces learning rate on plateau instead of stopping = more opportunity for improvement
             max_iter=max_iter,
             early_stopping=True,
             validation_fraction=0.1,
