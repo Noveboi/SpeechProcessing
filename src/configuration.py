@@ -73,7 +73,12 @@ def _get_cli_arguments() -> dict[str, Any | None]:
     return {MODEL_NAME: args.model, USE_CACHE: args.cache}
 
 
-def load() -> dict[str, Any]:
+def load() -> None:
+    global _CONFIG
+
+    if _CONFIG:
+        raise ValueError("Configuration has already been loaded")
+
     load_dotenv()
     log_level = _get_env("LOG_LEVEL")
 
@@ -98,11 +103,21 @@ def load() -> dict[str, Any]:
     log.debug("Parsed arguments: %s", args)
 
     _CONFIG = args
-    return _CONFIG
 
 
 def get(key: str) -> Any | None:
+    global _CONFIG
+
     if _CONFIG is None:
         raise ValueError("Tried to retrieve configuration before ``load``")
 
-    return _CONFIG.get(key, default=None)
+    return _CONFIG.get(key)
+
+
+def get_required_str(key: str) -> str:
+    val = get(key)
+
+    if not val:
+        raise ValueError(f"Configuration key not found: {key}")
+
+    return str(val)

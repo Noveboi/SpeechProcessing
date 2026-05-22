@@ -26,9 +26,9 @@ def dump(obj: Any, file_name: str) -> None:
         return
 
     path = _ensure_dir(file_name)
-    log.debug("Dump object at %s", path)
 
     with open(path, "wb") as f:
+        log.debug("Dump object at %s", path)
         pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
@@ -37,7 +37,7 @@ def load(file_name: str) -> Any:
         return
 
     path = _ensure_dir(file_name)
-    log.debug("Load object from %s", path)
 
     with open(path, "rb") as f:
+        log.debug("Load object from %s", path)
         return pickle.load(f)

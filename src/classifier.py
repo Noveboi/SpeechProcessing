@@ -19,6 +19,8 @@ from typing import Callable
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 log = logging.getLogger(__name__)
 
@@ -58,9 +60,17 @@ class KNN(FrameClassifier):
 
     def __init__(self, k: int = 5) -> None:
         self.k = k
-        self._classifier = KNeighborsClassifier(
+
+        classifier = KNeighborsClassifier(
             n_neighbors=k,
             n_jobs=-1,  # use CPU all cores
+        )
+
+        self._pipeline = Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("clf", classifier),
+            ]
         )
 
     @property
@@ -69,13 +79,13 @@ class KNN(FrameClassifier):
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "KNN":
         log.info("Training k-NN  (k=%d)  on %d frames", self.k, len(X))
-        self._classifier.fit(X, y)
+        self._pipeline.fit(X, y)
         log.info("k-NN training complete")
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         log.debug("k-NN predicting %d frames", len(X))
-        predictions = self._classifier.predict(X)
+        predictions = self._pipeline.predict(X)
         log.debug("k-NN predicted %d frames", len(X))
         return predictions
 
@@ -103,7 +113,7 @@ class MLP(FrameClassifier):
         self.hidden_layer_sizes = layer_sizes
         self.learning_rate = learning_rate
         self.max_iter = max_iter
-        self._classifier = MLPClassifier(
+        classifier = MLPClassifier(
             hidden_layer_sizes=layer_sizes,
             activation="relu",
             solver="adam",
@@ -114,6 +124,13 @@ class MLP(FrameClassifier):
             random_state=1337,  # constant seed for deterministic outputs!!
             n_iter_no_change=20,
             verbose=True,
+        )
+
+        self._pipeline = Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("clf", classifier),
+            ]
         )
 
     @property
@@ -128,16 +145,16 @@ class MLP(FrameClassifier):
             self.max_iter,
             len(X),
         )
-        self._classifier.fit(X, y)
+        self._pipeline.fit(X, y)
         log.info(
             "MLP training complete — stopped at epoch %d  |  best val accurary: %.4f",
-            self._classifier.n_iter_,
-            self._classifier.best_validation_score_,
+            self._pipeline["clf"]["n_iter_"],
+            self._pipeline["clf"]["best_validation_score_"],
         )
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        return self._classifier.predict(X)  # pyright: ignore[reportReturnType]
+        return self._pipeline.predict(X)  # pyright: ignore[reportReturnType]
 
 
 CLASSIFIERS: dict[str, Callable[[], FrameClassifier]] = {
