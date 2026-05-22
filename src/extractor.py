@@ -44,9 +44,9 @@ def power_spectrum(frame: Frame) -> tuple[np.ndarray, np.ndarray]:
 
     Returns
     -------
-    freqs : np.ndarray, shape (M,)
+    freqs : np.ndarray, shape (N_freqs,)
         Centre frequency of each bin in Hz.
-    power : np.ndarray, shape (M,)
+    power : np.ndarray, shape (N_freqs,)
         Power (magnitude squared) at each frequency bin.
     """
     x = frame.audio.waveform
@@ -72,10 +72,10 @@ def mel_filterbank(
 
     Parameters
     ----------
-    freqs : np.ndarray, shape (M,)
+    freqs : np.ndarray, shape (N_freqs,)
         Frequency of each FFT bin in Hz, as returned by power_spectrum.
     n_filters : int
-        Number of triangular Mel filters (default: 26).
+        Number of triangular Mel filters.
     sr : int
         Sample rate — used to set f_max if not provided.
     f_min : float
@@ -86,7 +86,7 @@ def mel_filterbank(
 
     Returns
     -------
-    filterbank : np.ndarray, shape (N_filters, M)
+    filterbank : np.ndarray, (N_filters, N_freqs)
         Each row is one triangular filter over the FFT bins.
     """
     if f_max is None:
@@ -156,14 +156,14 @@ def delta(coeffs_matrix: np.ndarray, N: int = 2) -> np.ndarray:
 
     Parameters
     ----------
-    coeffs_matrix : np.ndarray, shape (F, n_coeffs)
-        MFCCs for all F frames, one row per frame.
+    coeffs_matrix : np.ndarray, shape (N_frames, N_coeffs)
+        MFCCs for all N_frames frames, one row per frame.
     N : int
-        Half-window size for the regression (default: 2).
+        Half-window size for the regression.
 
     Returns
     -------
-    deltas : np.ndarray, shape (F, n_coeffs)
+    deltas : np.ndarray, (N_frames, N_coeffs)
     """
     denominator = 2 * np.sum(np.arange(1, N + 1) ** 2)
     numerator = np.zeros_like(coeffs_matrix)
@@ -209,27 +209,28 @@ def extract(frames: list[Frame]) -> np.ndarray:
         return np.array([])
 
     freqs, _ = power_spectrum(frames[0])
-    filterbank = mel_filterbank(freqs, n_filters=26, sr=frames[0].audio.sample_rate)
+    filterbank = mel_filterbank(freqs, sr=frames[0].audio.sample_rate)
 
     zcr_list, rms_list, mfcc_list, entropy_list = [], [], [], []
 
     for frame in frames:
-        _, power = power_spectrum(frame)  # one FFT, used for everything
+        _, power = power_spectrum(frame)
 
         zcr_list.append(zero_crossing_rate(frame))
         rms_list.append(rms_energy(frame))
 
-        filter_energies = filterbank @ power
-        log_energies = np.log(filter_energies + 1e-10)
-        mfcc_list.append(dct(log_energies, n_coeffs=13))
+        filter_energies = filterbank @ power  # (N_fil, N_freqs) @ (N_freqs,) = (N_fil,)
+        log_energies = np.log(filter_energies + 1e-10)  # (N_fil,)
+        transformed = dct(log_energies, n=13)  # (13, )
+        mfcc_list.append(transformed)
 
         entropy_list.append(spectral_entropy(power))
 
-    zcr = np.array(zcr_list)  # (N_frames, 1)
-    rms = np.array(rms_list)  # (N_frames, 1)
-    entropy = np.array(entropy_list)  # (N_frames, 1)
-    mfccs = np.array(mfcc_list)  # (N_frames, 13)
-    mfccs = cmvn(mfccs)  # (N_frames, 13)
+    zcr = np.array(zcr_list, dtype=DTYPE)  # (N_frames,)
+    rms = np.array(rms_list, dtype=DTYPE)  # (N_frames,)
+    entropy = np.array(entropy_list, dtype=DTYPE)  # (N_frames,)
+    mfccs = np.array(mfcc_list, dtype=DTYPE)  # (N_frames, 13)
+    # mfccs = cmvn(mfccs)  # (N_frames, 13)
     deltas = delta(mfccs)  # (N_frames, 13)
     ddeltas = delta_delta(mfccs)  # (N_frames, 13)
     mfccs_all = np.concatenate([mfccs, deltas, ddeltas], axis=1)  # (N_frames, 39)
