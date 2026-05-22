@@ -92,7 +92,7 @@ def test_multiple_audio(test_dir: str, model: classifier.FrameClassifier) -> Non
         log.info("Processing and predicting audio for '%s'", path)
 
         file_path = path.name
-        csv_path = f"results/{model.name}_{file_path}.csv"
+        csv_path = f"results/{model.name.rstrip('.wav')}_{file_path}.csv"
 
         segments = predict(audio, model)
         postprocessor.write_csv(segments, file_path, csv_path)
