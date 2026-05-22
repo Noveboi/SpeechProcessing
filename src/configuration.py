@@ -119,9 +119,6 @@ def _get_cli_arguments() -> dict[str, Any | None]:
 def load() -> None:
     global _CONFIG
 
-    if _CONFIG:
-        raise ValueError("Configuration has already been loaded")
-
     load_dotenv()
     log_level = _get_env("LOG_LEVEL")
 
