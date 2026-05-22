@@ -56,13 +56,13 @@ To setup a virtual environment, follow these steps:
 **1 - Create virtual environment directory and contents**
 
 ```sh
-src> python -m venv .venv
+python -m venv .venv
 ```
 
 If `python` is not a command, it could possibly be because it is not aliased. In any case, if that happens, try:
 
 ```sh
-src> python3 -m venv .venv
+python3 -m venv .venv
 ```
 
 **2 - Activate/Source the virtual environment**
@@ -70,11 +70,11 @@ src> python3 -m venv .venv
 After you've created the environment, source it:
 
 ```sh
-src> source .venv/bin/activate
+source .venv/bin/activate
 ```
 
 **3 - Install libraries**
 
 ```sh
-src> pip install -r requirements.txt
+pip install -r requirements.txt
 ```
