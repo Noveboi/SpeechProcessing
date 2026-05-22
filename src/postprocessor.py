@@ -119,7 +119,7 @@ def remove_short_segments(
         changed = False
         runs = _get_runs(cleaned)
 
-        for i, (label, start, end) in enumerate(runs):
+        for i, (_, start, end) in enumerate(runs):
             length = end - start  # frames in this run
 
             if length >= min_frames:
