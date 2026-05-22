@@ -196,47 +196,6 @@ def cmvn(mfccs: np.ndarray) -> np.ndarray:
     return (mfccs - mean) / std
 
 
-def extract_mfcc(
-    frames: list[Frame],
-    n_filters: int = 26,
-    n_coeffs: int = 13,
-    N: int = 2,
-) -> np.ndarray:
-    """
-    Extract MFCCs + Δ + ΔΔ for a list of frames.
-
-    Returns
-    -------
-    features : np.ndarray, shape (N_frames, n_coeffs * 3)
-        39-dimensional feature vector per frame.
-
-    Sources
-    -------
-    - Mel-frequency Cepstrum | Wikipedia Contibutors (https://en.wikipedia.org/wiki/Mel-frequency_cepstrum)
-    - Comparaative Evaluation of Various MFCC Implementations on the Speaker Verification Task | T.Ganchev, N.Fakotakis, G.Kokkinakis
-    """
-    if len(frames) == 0:
-        return np.array([])
-
-    mfccs = []
-    freqs, _ = power_spectrum(frames[0])
-    filterbank = mel_filterbank(freqs, n_filters, frames[0].audio.sample_rate)
-
-    # The per-frame extraction
-    for frame in frames:
-        _, power = power_spectrum(frame)
-        filter_energies = filterbank @ power
-        log_energies = np.log(filter_energies + 1e-10)
-        coeffs = dct(log_energies, n_coeffs)
-        mfccs.append(coeffs)
-
-    mfccs = np.array(mfccs)  # (N_frames, 13)
-    deltas = delta(mfccs, N)  # (N_frames, 13)
-    ddeltas = delta_delta(mfccs, N)  # (N_frames, 13)
-
-    return np.concatenate([mfccs, deltas, ddeltas], axis=1)  # (N_frames, 39)
-
-
 def spectral_entropy(power: np.ndarray) -> np.ndarray:
     """Entropy of the power spectrum — lower for speech, higher for noise."""
     total = np.sum(power) + 1e-10
@@ -245,45 +204,36 @@ def spectral_entropy(power: np.ndarray) -> np.ndarray:
     return np.array([entropy], dtype=DTYPE)
 
 
-def extract_spectral_features(
-    frames: list[Frame],
-) -> np.ndarray:
-    """
-    Extract spectral features for a list of frames.
+def extract(frames: list[Frame]) -> np.ndarray:
+    if not frames:
+        return np.array([])
 
-    Returns
-    -------
-    features : np.ndarray, shape (N_frames, N_spectral_features)
-    """
-    features = []
+    freqs, _ = power_spectrum(frames[0])
+    filterbank = mel_filterbank(freqs, n_filters=26, sr=frames[0].audio.sample_rate)
+
+    zcr_list, rms_list, mfcc_list, entropy_list = [], [], [], []
 
     for frame in frames:
-        _, power = power_spectrum(frame)
+        _, power = power_spectrum(frame)  # one FFT, used for everything
 
-        features.append(np.concatenate([spectral_entropy(power)]))
+        zcr_list.append(zero_crossing_rate(frame))
+        rms_list.append(rms_energy(frame))
 
-    return np.array(features, dtype=np.float32)  # (T, N_spectral_features)
+        filter_energies = filterbank @ power
+        log_energies = np.log(filter_energies + 1e-10)
+        mfcc_list.append(dct(log_energies, n_coeffs=13))
 
+        entropy_list.append(spectral_entropy(power))
 
-def extract(frames: list[Frame]) -> np.ndarray:
-    """
-    Extract all features for a list of frames and concatenate into
-    a single feature matrix.
-
-    Returns
-    -------
-    features : np.ndarray, shape (N_frames, N_features)
-    """
-    log.debug("Extracting features from %d frames", len(frames))
-
-    zcr = np.array([zero_crossing_rate(f) for f in frames])  # (N_frames, 1)
-    rms = np.array([rms_energy(f) for f in frames])  # (N_frames, 1)
-    mfccs = extract_mfcc(frames)  # (N_frames, N_mfccs)
-    mfccs = cmvn(mfccs)  # (N_frames, N_mfccs)
-    spectral = extract_spectral_features(frames)  # (N_frames, N_spectral_features)
+    mfccs = np.array(mfcc_list)  # (N_frames, 13)
+    mfccs = cmvn(mfccs)  # (N_frames, 13)
+    deltas = delta(mfccs)  # (N_frames, 13)
+    ddeltas = delta_delta(mfccs)  # (N_frames, 13)
+    mfccs_all = np.concatenate([mfccs, deltas, ddeltas], axis=1)  # (N_frames, 39)
 
     features = np.concatenate(
-        [zcr, rms, mfccs, spectral], axis=1
-    )  # (N_frames, N_features)
+        [np.array(zcr_list), np.array(rms_list), mfccs_all, np.array(entropy_list)],
+        axis=1,
+    )
 
     return features
