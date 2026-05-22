@@ -11,36 +11,35 @@ Overall, the system contains *two* types of modules: **core** and **utility** mo
 ### Core Modules
 
 **loader.py**
-Responsible for loading WAV files into memory and ensuring they have a consistent data representation and sample rate. 
+is responsible for loading WAV files into memory and ensuring they have a consistent data representation and sample rate. 
 
 **preprocessor.py**
-Takes raw audio data and does some clean-up to normalize the data, for example, it boosts high frequencies (to learn why, see the documentation in the module). **Mainly**, it is responsible for **windowing**!
+takes raw audio data and does some clean-up to normalize the data, for example, it boosts high frequencies (to learn why, see the documentation in the module). **Mainly**, it is responsible for **windowing**!
 
 **extractor.py**
-**VIP**!! This module deals with feature extraction per-frame using Fourier Transforms, Mel-Frequency Cepstrum Coefficients (MFCCs), Zero Crossing Rate (ZCR) and more!
+deals with per-frame feature extraction using Fourier Transforms, Mel-Frequency Cepstrum Coefficients (MFCCs), Zero Crossing Rate (ZCR) and more!
 
 **dataset.py**
-Another very important player, this guy builds the dataset that will be used for training the classifiers downstream. This entails processing the "training" speech/noise files, mixing them together at different ratios, and then for each one extracting their features (using `extractor.py`). The result is a feature matrix `X_train` and the corresponding labels `y_train`.
+builds the dataset that will be used for training the classifiers downstream. This entails processing the "training" speech/noise files, mixing them together at different ratios, and then for each one extracting their features (using `extractor.py`). The result is a feature matrix `X_train` and the corresponding labels `y_train`.
 
 **classifier.py**
-Contains the classifiers that are trained by the data from `dataset.py` and used to predict test data. As per the project's assignment, two classifiers are implemented: **k-NN** (k-nearest neighbours) and **MLP** (Multi-Layer Perceptron).
+contains the classifiers that are trained by the data from `dataset.py` and used to predict test data. As per the project's assignment, two classifiers are implemented: **k-NN** (k-nearest neighbours) and **MLP** (Multi-Layer Perceptron).
 
 **postprocessor.py**
-The final crucial step of the pipeline. This takes in the "harsh" predictions from a classifier and refines them. This mainly consists of eliminating very short noise segments and adding some extra duration to certain speech segments. You can easily skip this step to see the "harshness" if no post-processing is applied on the predictions.
+is the final crucial step of the pipeline. It takes in the "harsh" predictions from a classifier and refines them. This mainly consists of eliminating very short noise segments and adding some extra duration to certain speech segments. You can easily skip this step to see the "harshness" if no post-processing is applied on the predictions.
 
 **evaluator.py**
-Responsible for showing statistics and scoring the performance of the classification.
+is responsible for showing statistics and scoring the performance of the classification.
 
 **files.py**
-Defines the operations that read from/write to CSV files the predicted speech/noise segments (called foreground/background respectively). 
+defines the operations that read from/write to CSV files the predicted speech/noise segments (called foreground/background respectively). 
 
 ### Utility Modules
 
 **cache.py**
-Simple abstraction over the ``pickle`` package, used for storing trained models on disk for re-use (if possible).
+is a abstraction over the ``pickle`` package, used for storing trained models on disk for re-use (if possible).
 
-**configuration.py**
-Handles everything configuration. Environment variables and CLI arguments are currently supported for configured the program. This module also sets the logging configuration.
+**configuration.py** handles everything configuration (duh). Environment variables and CLI arguments are currently supported for configured the program. This module also sets the logging configuration.
 
 ---
 
