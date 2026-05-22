@@ -84,7 +84,11 @@ def test_multiple_audio(test_dir: str, model: classifier.FrameClassifier) -> Non
     --------
     After the predictions/classifications, the results are stored in CSV files.
     """
-    for path, audio in dataset.load_test_audio(test_dir):
+    test_audio = dataset.load_test_audio(test_dir)
+
+    log.info("%d test WAV files found in %s", len(test_audio), test_dir)
+
+    for path, audio in test_audio:
         log.info("Processing and predicting audio for '%s'", path)
 
         file_path = path.name
