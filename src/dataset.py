@@ -12,11 +12,11 @@ import numpy as np
 import extractor
 import loader
 import preprocessor
-from common import Audio
+from common import Audio, Segment, SegmentLabel
 
 log = logging.getLogger(__name__)
 
-SNR_LEVELS_DB = [0, 5, 10, 15, 20, 30]  # cover the full noise range
+SNR_LEVELS_DB = [0, 5, 10, 15, 20]  # cover the full noise range
 
 
 def _parse_time(time_str: str) -> float:
@@ -27,24 +27,25 @@ def _parse_time(time_str: str) -> float:
     return int(h) * 3600 + int(m) * 60 + float(s)
 
 
-def load_test_transcription(path: str) -> list[dict]:
+def load_test_transcription(path: str) -> list[Segment]:
     """
-    Load the test transcription JSON and return a list of speech
-    intervals with start and end times converted to seconds.
+    Load the test transcription JSON and return a list of foreground/background segments, exactly like
+    the model used for predicte doutputs.
     """
     with open(path, mode="r") as f:
         transcript = json.load(f)
 
-    segments = [
-        {
-            "start": _parse_time(t["start_time"]),
-            "end": _parse_time(t["end_time"]),
-        }
+    speech_segments: list[Segment] = [
+        Segment(
+            start=_parse_time(t["start_time"]),
+            end=_parse_time(t["end_time"]),
+            label=SegmentLabel.FOREGROUND,
+        )
         for t in transcript
     ]
 
-    log.info("Loaded %d transcript segments from %s", len(segments), path)
-    return segments
+    log.info("Loaded %d transcript speech segments from %s", len(speech_segments), path)
+    return speech_segments
 
 
 def load_test_audio(test_dir: str) -> list[tuple[Path, Audio]]:
@@ -120,6 +121,7 @@ def _build_core(
     # Pre-load all noise waveforms — they're only 6h7m total, fits in memory
     log.info("Pre-loading %d noise files", len(noise_files))
     noise_audio: list[Audio] = []
+
     for p in noise_files:
         try:
             noise_audio.append(loader.load_audio(str(p)))
@@ -128,6 +130,7 @@ def _build_core(
 
     X_parts, y_parts = [], []
 
+    # Speech file processing loop
     for speech_path in speech_files:
         try:
             speech_audio = loader.load_audio(str(speech_path))
@@ -135,13 +138,13 @@ def _build_core(
             log.error("Failed to load %s — %s", speech_path.name, e)
             continue
 
-        # 1. Clean speech (label = 1)
+        # TYPE 1 - Clean speech (label = 1)
         frames = preprocessor.process(speech_audio)
         features = extractor.extract(frames)
         X_parts.append(features)
         y_parts.append(np.ones(len(features), dtype=np.int8))
 
-        # 2. Noisy speech at each SNR level (all label = 1)
+        # TYPE 2 - Noisy speech at each SNR level (label = 1)
         for snr_db in SNR_LEVELS_DB:
             noise_idx = rng.integers(len(noise_audio))
             log.debug(
@@ -159,7 +162,7 @@ def _build_core(
 
         log.info("Processed '%s'", speech_path.name)
 
-    # 3. Pure noise (label = 0)
+    # TYPE 3 - Pure noise (label = 0)
     for noise in noise_audio:
         frames = preprocessor.process(noise)
         features = extractor.extract(frames)
