@@ -278,7 +278,7 @@ def plot_mfccs(
 
     Parameters
     ----------
-    mfcc_matrix : np.ndarray, shape (T, 39)
+    mfcc_matrix : np.ndarray, shape (N_frames, 39)
         The full 39-column slice of the feature matrix (columns 2:41).
 
     Answers: Do the MFCCs vary meaningfully over time? Do the delta
