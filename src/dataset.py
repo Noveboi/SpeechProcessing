@@ -50,21 +50,20 @@ def load_test_transcription(path: str) -> list[Segment]:
 
 def load_test_audio(test_dir: str) -> list[tuple[Path, Audio]]:
     """
-    Loads all the test audio samples.
-
-    Parameters
-    --------
-    test_dir: str
-        The directory path that contains all the test WAV files
-
-    Returns
-    --------
-    List of tuples containing two elements:
-        file_path : Path
-        audio : Audio
+    Loads test audio samples from either:
+    - a single WAV file
+    - a directory containing WAV files
     """
+
     path = Path(test_dir)
-    wav_files = path.glob("**/*.wav")
+
+    if path.is_file():
+        wav_files = [path] if path.suffix.lower() == ".wav" else []
+    elif path.is_dir():
+        wav_files = list(path.glob("**/*.wav"))
+    else:
+        log.warning("Path does not exist: %s", test_dir)
+        return []
 
     if not wav_files:
         log.warning("No WAV files found!")
@@ -72,12 +71,11 @@ def load_test_audio(test_dir: str) -> list[tuple[Path, Audio]]:
 
     audio_list: list[tuple[Path, Audio]] = []
 
-    for path in wav_files:
-        log.info("Loading test file: %s", path)
-        path_str = str(path)
+    for wav_path in wav_files:
+        log.info("Loading test file: %s", wav_path)
 
-        audio = loader.load_audio(path_str)
-        audio_list.append((path, audio))
+        audio = loader.load_audio(str(wav_path))
+        audio_list.append((wav_path, audio))
 
     return audio_list
 
