@@ -1,7 +1,0 @@
-Audiofile,start,end,class
-finland_boi.wav,0.0,0.68,foreground
-finland_boi.wav,0.68,2.99,background
-finland_boi.wav,2.99,5.17,foreground
-finland_boi.wav,5.17,7.06,background
-finland_boi.wav,7.06,10.13,foreground
-finland_boi.wav,10.13,10.58,background
