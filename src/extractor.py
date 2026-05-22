@@ -206,7 +206,8 @@ def extract(frames: list[Frame]) -> np.ndarray:
     rms = np.array(rms_list, dtype=DTYPE)  # (N_frames,)
     entropy = np.array(entropy_list, dtype=DTYPE)  # (N_frames,)
     mfccs = np.array(mfcc_list, dtype=DTYPE)  # (N_frames, 13)
-    mfccs = cmvn(mfccs)  # (N_frames, 13)
+    # 22/05 - Disabled CMVN due to lackluster performance
+    # mfccs = cmvn(mfccs)  # (N_frames, 13)
     deltas = delta(mfccs)  # (N_frames, 13)
     ddeltas = delta_delta(mfccs)  # (N_frames, 13)
     mfccs_all = np.concatenate([mfccs, deltas, ddeltas], axis=1)  # (N_frames, 39)
