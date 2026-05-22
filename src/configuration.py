@@ -75,4 +75,4 @@ def get() -> dict[str, str]:
     cli_args = _get_cli_arguments()
 
     args = env_args | cli_args  # CLI args will overwrite ENV args on conflict
-    return {key: value for key, value in args if value is not None}
+    return {key: value for key, value in args.items() if value is not None}
