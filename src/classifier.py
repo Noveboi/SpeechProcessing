@@ -121,7 +121,7 @@ class MLP(FrameClassifier):
             max_iter=max_iter,
             early_stopping=True,
             validation_fraction=0.1,
-            random_state=1337,  # constant seed for deterministic outputs!!
+            random_state=1337,  # constant seed for deterministic fitting!!
             n_iter_no_change=20,
             verbose=True,
         )
@@ -146,11 +146,7 @@ class MLP(FrameClassifier):
             len(X),
         )
         self._pipeline.fit(X, y)
-        log.info(
-            "MLP training complete — stopped at epoch %d  |  best val accurary: %.4f",
-            self._pipeline["clf"]["n_iter_"],
-            self._pipeline["clf"]["best_validation_score_"],
-        )
+        log.info("MLP training complete")
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
