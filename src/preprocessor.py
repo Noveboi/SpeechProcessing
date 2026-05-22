@@ -68,7 +68,12 @@ def remove_dc_offset(audio: Audio) -> Audio:
     return Audio(corrected.astype(DTYPE), audio.sample_rate)
 
 
-def process(audio: Audio, window_fn: str = "hamming") -> list[Frame]:
+def process(
+    audio: Audio,
+    window_fn: str = "hamming",
+    frame_ms: int = 25,
+    hop_ms: int = 10,
+) -> list[Frame]:
     """
     Parameters
     ----------
@@ -87,8 +92,8 @@ def process(audio: Audio, window_fn: str = "hamming") -> list[Frame]:
 
     frames = split_into_frames(
         audio,
-        frame_ms=25,
-        hop_ms=10,
+        frame_ms=frame_ms,
+        hop_ms=hop_ms,
         window_fn=window_fn,
     )
 

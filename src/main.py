@@ -42,12 +42,18 @@ def train(
     return model
 
 
-def predict(audio: Audio, model: classifier.FrameClassifier, scaler) -> list[Segment]:
-    frames = preprocessor.process(audio)
+def predict(
+    audio: Audio,
+    model: classifier.FrameClassifier,
+    scaler,
+    frame_ms: int = 25,
+    hop_ms: int = 10,
+) -> list[Segment]:
+    frames = preprocessor.process(audio, frame_ms=frame_ms, hop_ms=hop_ms)
     features: np.ndarray = extractor.extract(frames)  # (N_frames, N_features)
-    features = scaler.transform(features)  # pyright: ignore[reportAssignmentType]
+    features = scaler.transform(features)
     predictions = model.predict(features)  # (N_frames,)
-    segments = postprocessor.process(predictions)
+    segments = postprocessor.process(predictions, hop_ms=hop_ms)
 
     return segments
 
