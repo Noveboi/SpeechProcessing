@@ -17,6 +17,8 @@ _CONFIG: dict[str, Any] | None = None
 SPEECH_DIR = "SPEECH_DIR"
 NOISE_DIR = "NOISE_DIR"
 TEST_DIR = "TEST_DIR"
+RESULTS_DIR = "RESULTS_DIR"
+
 MODEL_NAME = "MODEL_NAME"
 USE_CACHE = "USE_CACHE"
 
@@ -48,6 +50,7 @@ def _get_env_arguments() -> dict[str, Any | None]:
         NOISE_DIR: _get_required_env(NOISE_DIR),
         TEST_DIR: _get_required_env(TEST_DIR),
         MODEL_NAME: _get_env(MODEL_NAME),
+        RESULTS_DIR: _get_env(RESULTS_DIR),
     }
 
 
@@ -63,14 +66,53 @@ def _get_cli_arguments() -> dict[str, Any | None]:
     )
 
     parser.add_argument(
+        "-t",
+        "--test",
+        help="The test directory containing audio files which will be used for testing the classification process",
+        type=str,
+        required=False,
+    )
+
+    parser.add_argument(
+        "-s",
+        "--speech",
+        help="The speech directory containing audio files which will be used to train the classifier",
+        type=str,
+        required=False,
+    )
+
+    parser.add_argument(
+        "-n",
+        "--noise",
+        help="The noise directory containing audio files which will be used to train the classifier",
+        type=str,
+        required=False,
+    )
+
+    parser.add_argument(
+        "--results",
+        help="The directory where the results (CSV, analytics) will be stored",
+        type=str,
+        required=False,
+    )
+
+    parser.add_argument(
         "--cache",
+        help="Whether to use the cache for persisting trained models. Using '--no-cache' disables it. By default it is enabled",
         action=argparse.BooleanOptionalAction,
         default=True,
     )
 
     args = parser.parse_args()
 
-    return {MODEL_NAME: args.model, USE_CACHE: args.cache}
+    return {
+        MODEL_NAME: args.model,
+        USE_CACHE: args.cache,
+        TEST_DIR: args.test,
+        SPEECH_DIR: args.speech,
+        NOISE_DIR: args.noise,
+        RESULTS_DIR: args.results,
+    }
 
 
 def load() -> None:
