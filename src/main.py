@@ -102,7 +102,6 @@ def test_audio_with_transcript(
     audio_path: str,
     transcript_path: str,
     model: classifier.FrameClassifier,
-    scaler: Any,
 ) -> None:
     """
     Test an audio file that has a corresponding transcription (as a JSON file)
@@ -112,7 +111,7 @@ def test_audio_with_transcript(
     audio = loader.load_audio(audio_path)
     transcript = dataset.load_test_transcription(transcript_path)
 
-    segments = predict(audio, model, scaler)
+    segments = predict(audio, model)
     score = evaluator.foreground_overlap(
         transcript_segments=transcript, predicted_segments=segments
     )

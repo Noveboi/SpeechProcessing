@@ -164,7 +164,7 @@ def cmvn(mfccs: np.ndarray) -> np.ndarray:
     Perform 'Cepstral Mean and Variance Normalization' on the raw MFCCs.
 
     This removes channel and noise-induced bias across speech and is SUPER good
-    for speech in noisy environments (such as the one given by the project).
+    for recognizing speech in noisy environments (such as the one given by the project).
     """
     mean = np.mean(mfccs, axis=0)
     std = np.std(mfccs, axis=0) + 1e-10
