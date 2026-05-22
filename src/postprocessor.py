@@ -264,7 +264,7 @@ def process(
     log.info("Post-processing %d frames", len(predictions))
 
     predictions = smooth_predictions(predictions, smooth_window_ms, hop_ms)
-    predictions = apply_hangover(predictions)
+    # predictions = apply_hangover(predictions)
     predictions = remove_short_segments(predictions)
     segments = extract_segments(predictions, hop_ms)
 
