@@ -29,27 +29,29 @@ def train(
     --------
     The trained classifier, ready to make predictions.
     """
+    clf_file_path = f"{model_name}.pkl"
+
+    stored_clf = cache.load(clf_file_path)
+    if stored_clf:
+        return stored_clf
+
+    log.info("No persisted model found for %s at '%s'", model_name, clf_file_path)
+
     clf = classifier.get(model_name, **configuration.get_all())
-    clf_file_path = f"{clf.name}.pkl"
 
-    try:
-        clf = cache.load(clf_file_path)
-    except OSError:
-        log.info("No persisted model found for %s at '%s'", clf.name, clf_file_path)
+    data = dataset.create(
+        speech_dir=speech_dir,
+        noise_dir=noise_dir,
+    )
 
-        data = dataset.build(
-            speech_dir=speech_dir,
-            noise_dir=noise_dir,
-        )
+    if not data:
+        log.fatal("Training could not finish")
+        sys.exit(1)
 
-        if not data:
-            log.fatal("Training could not finish")
-            sys.exit(1)
+    X_train, y_train = data
 
-        X_train, y_train = data
-
-        clf.fit(X_train, y_train)
-        cache.dump(clf, clf_file_path)
+    clf.fit(X_train, y_train)
+    cache.dump(clf, clf_file_path)
 
     return clf
 

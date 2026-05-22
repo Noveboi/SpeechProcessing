@@ -214,12 +214,13 @@ def _balance(
     return X[idx], y[idx]
 
 
-def build(
+def create(
     speech_dir: str,
     noise_dir: str,
 ) -> tuple[np.ndarray, np.ndarray] | None:
     """
     Process all WAV files under speech_dir and noise_dir and return a labelled feature matrix.
+    This matrix will then be used to train classifiers.
 
     Labels:
         - 1 = speech (foreground)
