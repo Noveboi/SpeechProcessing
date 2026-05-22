@@ -115,6 +115,8 @@ def remove_short_segments(
     cleaned = predictions.copy()
 
     changed = True
+
+    # this guy is a doozie!!!
     while changed:
         changed = False
         runs = _get_runs(cleaned)
@@ -276,9 +278,11 @@ def process(
     """
     log.info("Post-processing %d frames", len(predictions))
 
-    predictions = smooth_predictions(predictions, smooth_window_ms, hop_ms)
-    predictions = apply_hangover(predictions, hop_ms)
-    predictions = remove_short_segments(predictions, hop_ms)
-    segments = extract_segments(predictions, hop_ms)
+    predictions = smooth_predictions(
+        predictions, hop_ms=hop_ms, window_ms=smooth_window_ms
+    )
+    predictions = apply_hangover(predictions, hop_ms=hop_ms)
+    predictions = remove_short_segments(predictions, hop_ms=hop_ms)
+    segments = extract_segments(predictions, hop_ms=hop_ms)
 
     return segments
