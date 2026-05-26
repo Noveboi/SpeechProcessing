@@ -3,18 +3,11 @@ import pickle
 from pathlib import Path
 from typing import Any, TypeVar
 
-import configuration
-
 CACHE_DIR = Path("_cache")
 
 log = logging.getLogger(__name__)
 
 T = TypeVar("T")
-
-
-def _cache_enabled() -> bool:
-    flag = configuration.get(configuration.USE_CACHE)
-    return flag is not False
 
 
 def _cache_path(file_name: str) -> Path:
@@ -29,10 +22,6 @@ def dump(obj: Any, file_name: str) -> bool:
         True if the object was cached successfully.
         False otherwise.
     """
-
-    if not _cache_enabled():
-        log.debug("Cache disabled, stopping dump")
-        return False
 
     try:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -59,10 +48,6 @@ def load(file_name: str, default: T | None = None) -> T | None:
         Cached object if present and valid.
         Otherwise returns `default`.
     """
-
-    if not _cache_enabled():
-        log.debug("Cache disabled, stopping load")
-        return default
 
     path = _cache_path(file_name)
 

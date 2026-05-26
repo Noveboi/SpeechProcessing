@@ -1,8 +1,9 @@
 #!/usr/bin/python3
 
+import dataclasses
+import json
 import logging
 import sys
-from pathlib import Path
 
 import numpy as np
 
@@ -10,6 +11,7 @@ import cache
 import classifier
 import configuration
 import dataset
+import evaluator
 import extractor
 import files
 import postprocessor
@@ -17,42 +19,6 @@ import preprocessor
 from common import Audio, Segment
 
 log = logging.getLogger(__name__)
-
-
-def train(
-    model_name: str, speech_dir: str, noise_dir: str
-) -> classifier.FrameClassifier:
-    """
-    Train the classifier on speech/noise data.
-
-    Returns
-    --------
-    The trained classifier, ready to make predictions.
-    """
-    clf = classifier.get(model_name, **configuration.get_all())
-    clf_file_path = f"{clf.name}_{clf.hash()}.pkl"
-
-    stored_clf = cache.load(clf_file_path)
-    if stored_clf:
-        return stored_clf
-
-    log.info("No persisted model found for %s at '%s'", clf.name, clf_file_path)
-
-    data = dataset.create(
-        speech_dir=speech_dir,
-        noise_dir=noise_dir,
-    )
-
-    if not data:
-        log.fatal("Training could not finish")
-        sys.exit(1)
-
-    X_train, y_train = data
-
-    clf.fit(X_train, y_train)
-    cache.dump(clf, clf_file_path)
-
-    return clf
 
 
 def predict(
@@ -66,53 +32,97 @@ def predict(
 
     This invokes the full pipeline, from pre-processing to post-processing.
     """
+    log.info("Pre-processing audio")
     frames = preprocessor.process(audio, frame_ms=frame_ms, hop_ms=hop_ms)
+
+    log.info("Extracting features for %d frames", len(frames))
     features: np.ndarray = extractor.extract(frames)  # (N_frames, N_features)
+
+    log.info("Predicting background/foreground for %d frames", len(frames))
     predictions = model.predict(features)  # (N_frames,)
+
+    log.info("Post-processing %d segments", len(predictions))
     segments = postprocessor.process(predictions, hop_ms=hop_ms)
 
     return segments
 
 
-def test_multiple_audio(test_dir: str, model: classifier.FrameClassifier) -> None:
-    """
-    Predict foreground/background intervals in audio files contained in the ``test_dir`` directory.
+def run_train_program(args: configuration.TrainingConfiguration) -> None:
+    log.info("Running training program (%s)", args)
+    clf = classifier.get(args.model_name, layers=args.layers)
 
-    Parameters
-    --------
-    test_dir : str
-        The directory containing the WAV audio files
-    model : FrameClassifier
-        The classifier to be used in the predictions/classifications (e.g: ``KNN`` or ``MLP``)
+    data = dataset.create(
+        speech_dir=args.speech_files_path,
+        noise_dir=args.noise_files_path,
+    )
 
-    Side Effects
-    --------
-    After the predictions/classifications, the results are stored in CSV files.
-    """
-    test_audio = dataset.load_test_audio(test_dir)
+    if not data:
+        log.fatal("Training could not finish")
+        sys.exit(1)
 
-    log.info("%d test WAV files found in %s", len(test_audio), test_dir)
+    X_train, y_train = data
+
+    clf.fit(X_train, y_train)
+    cache.dump(clf, clf.cache_path)
+
+
+def run_test_program(args: configuration.TestingConfiguration) -> None:
+    log.info("Running testing program (%s)", args)
+    test_audio = dataset.load_test_audio(args.test_files_path)
+
+    log.info("%d test WAV files found in %s", len(test_audio), args.test_files_path)
+
+    if len(test_audio) == 0:
+        return
+
+    clf = classifier.get(args.model_name, layers=args.layers)
+    stored_clf = cache.load(clf.cache_path)
+
+    if not stored_clf:
+        raise ValueError(f"The classifier {clf} has not been trained.")
+
+    clf = stored_clf
 
     for path, audio in test_audio:
         log.info("Processing and predicting audio for '%s'", path)
 
         file_path = path.name
-        csv_path = f"results/{model.name}_{Path(file_path).stem}.csv"
+        csv_path = f"results/{clf.name}_{path.stem}.csv"
 
-        segments = predict(audio, model)
+        segments = predict(audio, clf)
         files.write_csv(segments, file_path, csv_path)
+
+
+def run_evaluation_program(args: configuration.EvaluationConfiguration) -> None:
+    log.info("Running evaluation program (%s)", args)
+
+    transcription_segments = dataset.load_test_transcription(args.transcript_json_path)
+    predicted_segments = files.load_csv_as_segments(args.csv_path)
+
+    if not transcription_segments:
+        raise ValueError("Transcription JSON path not found")
+
+    if not predicted_segments:
+        raise ValueError("CSV file not found")
+
+    evaluation = evaluator.evaluate(
+        prediction_segments=predicted_segments,
+        ground_truth_segments=transcription_segments,
+    )
+
+    with open("evaluation.json", mode="w") as f:
+        json.dump(dataclasses.asdict(evaluation), f, indent=2, sort_keys=True)
+        log.info("Evaluation saved at %s", f.name)
 
 
 def main():
     configuration.load()
 
-    model = train(
-        model_name=configuration.get_required_str(configuration.MODEL_NAME),
-        speech_dir=configuration.get_required_str(configuration.SPEECH_DIR),
-        noise_dir=configuration.get_required_str(configuration.NOISE_DIR),
+    configuration.cli(
+        train_program=run_train_program,
+        test_program=run_test_program,
+        evaluation_program=run_evaluation_program,
     )
-
-    test_multiple_audio(configuration.get_required_str(configuration.TEST_DIR), model)
 
 
 if __name__ == "__main__":

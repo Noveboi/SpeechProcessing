@@ -27,13 +27,17 @@ def _parse_time(time_str: str) -> float:
     return int(h) * 3600 + int(m) * 60 + float(s)
 
 
-def load_test_transcription(path: str) -> list[Segment]:
+def load_test_transcription(path: str) -> list[Segment] | None:
     """
     Load the test transcription JSON and return a list of foreground/background segments, exactly like
     the model used for predicte doutputs.
     """
-    with open(path, mode="r") as f:
-        transcript = json.load(f)
+    try:
+        with open(path, mode="r") as f:
+            transcript = json.load(f)
+    except OSError:
+        log.warning("Transcription file not found")
+        return None
 
     speech_segments: list[Segment] = [
         Segment(
@@ -44,8 +48,27 @@ def load_test_transcription(path: str) -> list[Segment]:
         for t in transcript
     ]
 
+    if len(speech_segments) == 0:
+        return []
+
+    all_segments: list[Segment] = []
+    current_end: float = -1.0
+
+    for seg_fg in speech_segments:
+        if seg_fg.start > current_end:
+            all_segments.append(
+                Segment(
+                    start=current_end,
+                    end=seg_fg.start,
+                    label=SegmentLabel.BACKGROUND,
+                )
+            )
+
+        all_segments.append(seg_fg)
+        current_end = seg_fg.end
+
     log.info("Loaded %d transcript speech segments from %s", len(speech_segments), path)
-    return speech_segments
+    return all_segments
 
 
 def load_test_audio(test_dir: str) -> list[tuple[Path, Audio]]:
@@ -127,6 +150,9 @@ def _build_core(
             log.warning("Skipping noise file %s — %s", p.name, e)
 
     X_parts, y_parts = [], []
+    count_noise = len(noise_audio)
+    count_speech = len(speech_files) * len(SNR_LEVELS_DB)
+    counter = 1
 
     # Speech file processing loop
     for speech_path in speech_files:
@@ -144,9 +170,14 @@ def _build_core(
 
         # TYPE 2 - Noisy speech at each SNR level (label = 1)
         for snr_db in SNR_LEVELS_DB:
-            noise_idx = rng.integers(len(noise_audio))
-            log.debug(
-                "Mixing noise/speech @ %.3fdB SNR (noise_idx=%d)", snr_db, noise_idx
+            noise_idx = rng.integers(count_noise)
+
+            log.info(
+                "Building speech features @ %ddB SNR (%d/%d) noise=%d",
+                snr_db,
+                counter,
+                count_speech,
+                noise_idx,
             )
 
             noise_waveform = noise_audio[noise_idx].waveform
@@ -158,10 +189,11 @@ def _build_core(
             X_parts.append(features)
             y_parts.append(np.ones(len(features), dtype=np.int8))
 
-        log.info("Processed '%s'", speech_path.name)
+            counter += 1
 
     # TYPE 3 - Pure noise (label = 0)
-    for noise in noise_audio:
+    for idx, noise in enumerate(noise_audio):
+        log.info("Building noise features (%d/%d)", idx + 1, count_noise)
         frames = preprocessor.process(noise)
         features = extractor.extract(frames)
         X_parts.append(features)

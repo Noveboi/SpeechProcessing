@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 CSV_FIELDNAMES = ["Audiofile", "start", "end", "class"]
 
 
-def read_csv_as_segments(file_path: str) -> list[Segment] | None:
+def load_csv_as_segments(file_path: str) -> list[Segment] | None:
     """
     Read a CSV and translate it into background/foreground segments
     """

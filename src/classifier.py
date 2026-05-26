@@ -24,8 +24,6 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-import configuration
-
 log = logging.getLogger(__name__)
 
 
@@ -33,6 +31,10 @@ class FrameClassifier(ABC):
     """
     Abstract base class for frame-level classifiers.
     """
+
+    @property
+    def cache_path(self) -> str:
+        return f"{self.name}_{self.hash()}.pkl"
 
     @property
     @abstractmethod
@@ -72,6 +74,7 @@ class KNN(FrameClassifier):
 
         classifier = KNeighborsClassifier(
             n_neighbors=k,
+            algorithm="kd_tree",
             n_jobs=-1,  # use CPU all cores
         )
 
@@ -107,6 +110,9 @@ class KNN(FrameClassifier):
         encoded = json.dumps(payload, sort_keys=True).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()
 
+    def __str__(self) -> str:
+        return f"KNN(k={self.k})"
+
 
 class MLP(FrameClassifier):
     def __init__(
@@ -115,9 +121,7 @@ class MLP(FrameClassifier):
         max_iter: int = 500,
         **kwargs,
     ) -> None:
-        self.hidden_layer_sizes = tuple(
-            kwargs.get(configuration.MLP_LAYER_SIZES) or (64, 32)
-        )
+        self.hidden_layer_sizes = tuple(kwargs.get("layers") or (64, 32))
         self.learning_rate = learning_rate
         self.max_iter = max_iter
 
@@ -170,6 +174,9 @@ class MLP(FrameClassifier):
 
         encoded = json.dumps(payload, sort_keys=True).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()
+
+    def __str__(self) -> str:
+        return f"MLP({self.hidden_layer_sizes}, {self.learning_rate}, {self.max_iter})"
 
 
 CLASSIFIERS: dict[str, Callable[[dict[str, Any]], FrameClassifier]] = {
