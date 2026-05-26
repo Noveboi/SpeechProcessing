@@ -1,6 +1,8 @@
 import logging
 from dataclasses import dataclass
 
+import numpy as np
+
 import files
 from common import Seconds, Segment, SegmentLabel
 
@@ -67,6 +69,15 @@ def _total_intersection(
             total += max(0.0, min(a_end, b_end) - max(a_start, b_start))
 
     return total
+
+
+def _segmentation_score(ratio: float) -> float:
+    """
+    Converts segmentation ratio to a [0, 1] score.
+    A ratio of 1.0 (perfect) scores 1.0.
+    Decays symmetrically for both over- and under-segmentation.
+    """
+    return 1.0 / (1.0 + abs(ratio - 1.0))
 
 
 def _overall_score(
