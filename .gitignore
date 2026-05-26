@@ -227,3 +227,6 @@ speech/
 noise/
 results/
 _cache/
+
+# odt lock files
+.~lock*.odt#
