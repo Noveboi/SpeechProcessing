@@ -20,6 +20,9 @@ def _parse_time(time_str: str) -> float:
 
 
 def _ensure_path_exists(path: Path) -> Path:
+    if path.is_file():
+        return path
+
     path.mkdir(parents=True, exist_ok=True)
     return path
 
