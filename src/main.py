@@ -72,7 +72,7 @@ def run_train_program(args: configuration.TrainingConfiguration) -> None:
 def run_test_program(args: configuration.TestingConfiguration) -> None:
     log.info("Running testing program (%s)", args)
     test_dir = files.to_existing_path(args.test_files_path)
-    test_audio = dataset.load_test_audio(test_dir)
+    test_audio = files.load_test_audio(test_dir)
 
     log.info("%d test WAV files found in %s", len(test_audio), args.test_files_path)
 
@@ -104,7 +104,7 @@ def run_evaluation_program(args: configuration.EvaluationConfiguration) -> None:
     csv_dir = files.to_existing_path(args.csv_path)
     results_dir = files.to_existing_path(args.results_path)
 
-    transcription_segments = dataset.load_transcription(transcription_dir)
+    transcription_segments = files.load_transcription(transcription_dir)
     predicted_segments = files.load_csv_as_segments(csv_dir)
 
     if not transcription_segments:

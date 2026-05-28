@@ -3,7 +3,6 @@ Build the labelled training feature matrix from the speech/ and noise/
 directory structure.
 """
 
-import json
 import logging
 from pathlib import Path
 
@@ -12,93 +11,11 @@ import numpy as np
 import extractor
 import loader
 import preprocessor
-from common import Audio, Segment, SegmentLabel
+from common import Audio
 
 log = logging.getLogger(__name__)
 
 SNR_LEVELS_DB = [0, 5, 10, 15, 20]  # cover the full noise range
-
-
-def _parse_time(time_str: str) -> float:
-    """
-    Convert "HH:MM:SS.ss" to seconds.
-    """
-    h, m, s = time_str.split(":")
-    return int(h) * 3600 + int(m) * 60 + float(s)
-
-
-def load_transcription(path: Path) -> list[Segment] | None:
-    """
-    Load the test transcription JSON and return a list of foreground/background segments, exactly like
-    the model used for predicte doutputs.
-    """
-    try:
-        with open(path, mode="r") as f:
-            transcript = json.load(f)
-    except OSError:
-        log.warning("Transcription file not found")
-        return None
-
-    speech_segments: list[Segment] = [
-        Segment(
-            start=_parse_time(t["start_time"]),
-            end=_parse_time(t["end_time"]),
-            label=SegmentLabel.FOREGROUND,
-        )
-        for t in transcript
-    ]
-
-    if len(speech_segments) == 0:
-        return []
-
-    all_segments: list[Segment] = []
-    current_end: float = -1.0
-
-    for seg_fg in speech_segments:
-        if seg_fg.start > current_end:
-            all_segments.append(
-                Segment(
-                    start=current_end,
-                    end=seg_fg.start,
-                    label=SegmentLabel.BACKGROUND,
-                )
-            )
-
-        all_segments.append(seg_fg)
-        current_end = seg_fg.end
-
-    log.info("Loaded %d transcript speech segments from %s", len(speech_segments), path)
-    return all_segments
-
-
-def load_test_audio(test_dir: Path) -> list[tuple[Path, Audio]]:
-    """
-    Loads test audio samples from either:
-    - a single WAV file
-    - a directory containing WAV files
-    """
-
-    if test_dir.is_file():
-        wav_files = [test_dir] if test_dir.suffix.lower() == ".wav" else []
-    elif test_dir.is_dir():
-        wav_files = list(test_dir.glob("**/*.wav"))
-    else:
-        log.warning("Path does not exist: %s", test_dir)
-        return []
-
-    if not wav_files:
-        log.warning("No WAV files found!")
-        return []
-
-    audio_list: list[tuple[Path, Audio]] = []
-
-    for wav_path in wav_files:
-        log.info("Loading test file: %s", wav_path)
-
-        audio = loader.load_audio(wav_path)
-        audio_list.append((wav_path, audio))
-
-    return audio_list
 
 
 def _mix_speech_noise(

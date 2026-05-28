@@ -3,7 +3,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-import files
 from common import Seconds, Segment, SegmentLabel
 
 log = logging.getLogger(__name__)
@@ -228,15 +227,3 @@ def statistics(segments: list[Segment]) -> SegmentStatistics:
         background_max_duration=bg_max_duration,
         background_min_duration=bg_min_duration,
     )
-
-
-if __name__ == "__main__":
-    segments = files.load_csv_as_segments(
-        "results/07_double_layers_full/MLP_s01_full.csv"
-    )
-
-    if not segments:
-        exit(1)
-
-    stats = statistics(segments)
-    print(stats)
