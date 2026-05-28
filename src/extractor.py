@@ -74,7 +74,7 @@ def mel_filterbank(
     Parameters
     ----------
     freqs : np.ndarray, shape (N_freqs,)
-        Frequency of each FFT bin in Hz, as returned by power_spectrum.
+        Frequency of each FFT bin in Hz, as returned by ``power_spectrum``.
     n_filters : int
         Number of triangular Mel filters.
     sr : int
@@ -93,7 +93,7 @@ def mel_filterbank(
     if f_max is None:
         f_max = sr / 2.0
 
-    # Convert the Hz boundaries to Mel
+    # Convert the Hz boundaries to Mels
     mel_min = _hz_to_mel(f_min)
     mel_max = _hz_to_mel(f_max)
 
@@ -159,19 +159,6 @@ def delta_delta(coeffs_matrix: np.ndarray, N: int = 2) -> np.ndarray:
     return delta(delta(coeffs_matrix, N), N)
 
 
-def cmvn(mfccs: np.ndarray) -> np.ndarray:
-    """
-    Perform 'Cepstral Mean and Variance Normalization' on the raw MFCCs.
-
-    This removes channel and noise-induced bias across speech and is SUPER good
-    for recognizing speech in noisy environments (such as the one given by the project).
-    """
-    mean = np.mean(mfccs, axis=0)
-    std = np.std(mfccs, axis=0) + 1e-10
-
-    return (mfccs - mean) / std
-
-
 def spectral_entropy(power: np.ndarray) -> np.ndarray:
     """Entropy of the power spectrum — lower for speech, higher for noise."""
     total = np.sum(power) + 1e-10
@@ -206,8 +193,6 @@ def extract(frames: list[Frame]) -> np.ndarray:
     rms = np.array(rms_list, dtype=DTYPE)  # (N_frames,)
     entropy = np.array(entropy_list, dtype=DTYPE)  # (N_frames,)
     mfccs = np.array(mfcc_list, dtype=DTYPE)  # (N_frames, 13)
-    # 22/05 - Disabled CMVN due to lackluster performance
-    # mfccs = cmvn(mfccs)  # (N_frames, 13)
     deltas = delta(mfccs)  # (N_frames, 13)
     ddeltas = delta_delta(mfccs)  # (N_frames, 13)
     mfccs_all = np.concatenate([mfccs, deltas, ddeltas], axis=1)  # (N_frames, 39)
