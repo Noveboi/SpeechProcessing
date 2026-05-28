@@ -19,7 +19,9 @@ SNR_LEVELS_DB = [0, 5, 10, 15, 20]  # cover the full noise range
 
 
 def _mix_speech_noise(
-    speech: np.ndarray, noise: np.ndarray, snr_db: float
+    speech: np.ndarray,
+    noise: np.ndarray,
+    snr_db: float,
 ) -> np.ndarray:
     """Mix a noise segment into a speech waveform at a target SNR."""
     speech_power = np.mean(speech**2) + 1e-10
@@ -34,8 +36,9 @@ def _mix_speech_noise(
     return (speech + scale * noise[: len(speech)]).astype(np.float32)
 
 
-def _build_core(
-    speech_dir: Path, noise_dir: Path
+def _create_core(
+    speech_dir: Path,
+    noise_dir: Path,
 ) -> tuple[np.ndarray, np.ndarray] | None:
     rng = np.random.default_rng(1337)
 
@@ -182,7 +185,7 @@ def create(
     y : np.ndarray, shape (N_frames,)
     """
 
-    return _build_core(speech_dir, noise_dir)
+    return _create_core(speech_dir, noise_dir)
 
 
 # Demo the functionality of dataset.py
