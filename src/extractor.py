@@ -69,7 +69,7 @@ def mel_filterbank(
     f_max: float | None = None,
 ) -> np.ndarray:
     """
-    Build a Mel filterbank matrix. (speech book ch.4)
+    Build a Mel filterbank matrix.
 
     Parameters
     ----------
