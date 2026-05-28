@@ -9,7 +9,20 @@ log = logging.getLogger(__name__)
 CSV_FIELDNAMES = ["Audiofile", "start", "end", "class"]
 
 
-def load_csv_as_segments(file_path: str) -> list[Segment] | None:
+def ensure_path_exists(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def to_existing_path(path: str) -> Path:
+    return ensure_path_exists(to_path(path))
+
+
+def to_path(path: str) -> Path:
+    return Path(path)
+
+
+def load_csv_as_segments(file_path: Path) -> list[Segment] | None:
     """
     Read a CSV and translate it into background/foreground segments
     """
@@ -39,7 +52,7 @@ def load_csv_as_segments(file_path: str) -> list[Segment] | None:
 def write_csv(
     segments: list[Segment],
     audio_filename: str,
-    output_path: str,
+    output_path: Path,
 ) -> bool:
     """
     Write the segment list to a CSV file in the required format:
@@ -52,7 +65,7 @@ def write_csv(
         As returned by extract_segments.
     audio_filename : str
         Name of the source audio file — written into the Audiofile column.
-    output_path : str
+    output_path : Path
         Destination path for the CSV file.
     """
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)

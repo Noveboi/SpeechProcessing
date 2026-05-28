@@ -51,9 +51,12 @@ def run_train_program(args: configuration.TrainingConfiguration) -> None:
     log.info("Running training program (%s)", args)
     clf = classifier.get(args.model_name, layers=args.layers)
 
+    speech_dir = files.to_existing_path(args.speech_files_path)
+    noise_dir = files.to_existing_path(args.noise_files_path)
+
     data = dataset.create(
-        speech_dir=args.speech_files_path,
-        noise_dir=args.noise_files_path,
+        speech_dir=speech_dir,
+        noise_dir=noise_dir,
     )
 
     if not data:
@@ -68,7 +71,8 @@ def run_train_program(args: configuration.TrainingConfiguration) -> None:
 
 def run_test_program(args: configuration.TestingConfiguration) -> None:
     log.info("Running testing program (%s)", args)
-    test_audio = dataset.load_test_audio(args.test_files_path)
+    test_dir = files.to_existing_path(args.test_files_path)
+    test_audio = dataset.load_test_audio(test_dir)
 
     log.info("%d test WAV files found in %s", len(test_audio), args.test_files_path)
 
@@ -76,7 +80,7 @@ def run_test_program(args: configuration.TestingConfiguration) -> None:
         return
 
     clf = classifier.get(args.model_name, layers=args.layers)
-    stored_clf = cache.load(clf.cache_path)
+    stored_clf: classifier.FrameClassifier | None = cache.load(clf.cache_path)
 
     if not stored_clf:
         raise ValueError(f"The classifier {clf} has not been trained.")
@@ -86,18 +90,22 @@ def run_test_program(args: configuration.TestingConfiguration) -> None:
     for path, audio in test_audio:
         log.info("Processing and predicting audio for '%s'", path)
 
-        file_path = path.name
-        csv_path = f"results/{clf.name}_{path.stem}.csv"
+        results_dir = files.to_existing_path(args.results_directory)
+        csv_path = results_dir / f"{clf.name}_{clf.hash()}_{path.stem}.csv"
 
         segments = predict(audio, clf)
-        files.write_csv(segments, file_path, csv_path)
+        files.write_csv(segments, path.name, csv_path)
 
 
 def run_evaluation_program(args: configuration.EvaluationConfiguration) -> None:
     log.info("Running evaluation program (%s)", args)
 
-    transcription_segments = dataset.load_test_transcription(args.transcript_json_path)
-    predicted_segments = files.load_csv_as_segments(args.csv_path)
+    transcription_dir = files.to_existing_path(args.transcript_json_path)
+    csv_dir = files.to_existing_path(args.csv_path)
+    results_dir = files.to_existing_path(args.results_path)
+
+    transcription_segments = dataset.load_transcription(transcription_dir)
+    predicted_segments = files.load_csv_as_segments(csv_dir)
 
     if not transcription_segments:
         raise ValueError("Transcription JSON path not found")
@@ -110,8 +118,10 @@ def run_evaluation_program(args: configuration.EvaluationConfiguration) -> None:
         ground_truth_segments=transcription_segments,
     )
 
-    with open("evaluation.json", mode="w") as f:
-        json.dump(dataclasses.asdict(evaluation), f, indent=2, sort_keys=True)
+    evaluation_path = results_dir / "evaluation.json"
+
+    with open(evaluation_path, mode="w") as f:
+        json.dump(dataclasses.asdict(evaluation), f, indent=2)
         log.info("Evaluation saved at %s", f.name)
 
 

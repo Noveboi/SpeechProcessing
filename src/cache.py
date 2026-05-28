@@ -40,7 +40,7 @@ def dump(obj: Any, file_name: str) -> bool:
         return False
 
 
-def load(file_name: str, default: T | None = None) -> T | None:
+def load(file_name: str, default: Any | None = None) -> Any | None:
     """
     Load object from cache.
 

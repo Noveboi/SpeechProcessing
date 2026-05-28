@@ -32,6 +32,7 @@ class TestingConfiguration(SubprogramConfiguration):
 @dataclass(frozen=True)
 class EvaluationConfiguration(SubprogramConfiguration):
     transcript_json_path: str
+    results_path: str
     csv_path: str
 
 
@@ -151,6 +152,7 @@ def cli(
     )
 
     evaluate_parser.add_argument(
+        "-t",
         "--transcript",
         help="The path to the JSON transcription",
         type=str,
@@ -158,8 +160,17 @@ def cli(
     )
 
     evaluate_parser.add_argument(
+        "-c",
         "--csv",
         help="The path to the predictions in CSV format",
+        type=str,
+        required=True,
+    )
+
+    evaluate_parser.add_argument(
+        "-r",
+        "--results",
+        help="The path to the results folder where the evaluation will be stored",
         type=str,
         required=True,
     )
@@ -195,7 +206,13 @@ def _config_test_subprogram(func: Callable[[TestingConfiguration], None]):
 
 
 def _config_evaluate_subprogram(func: Callable[[EvaluationConfiguration], None]):
-    return lambda args: func(EvaluationConfiguration(args.transcript, args.csv))
+    return lambda args: func(
+        EvaluationConfiguration(
+            transcript_json_path=args.transcript,
+            csv_path=args.csv,
+            results_path=args.results,
+        )
+    )
 
 
 def load() -> None:

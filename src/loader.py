@@ -4,6 +4,7 @@ This module loads a WAV file, converts it to mono, and re-samples it
 
 import logging
 from math import gcd
+from pathlib import Path
 
 import numpy as np
 import scipy.signal as sig
@@ -14,7 +15,7 @@ from common import Audio
 log = logging.getLogger(__name__)
 
 
-def load_audio(filename: str, sample_rate: int = 16_000) -> Audio:
+def load_audio(filename: Path, sample_rate: int = 16_000) -> Audio:
     fs, samples = wavfile.read(filename)
 
     # Standardize the numeric format of the samples to float32

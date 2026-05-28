@@ -27,7 +27,7 @@ def _parse_time(time_str: str) -> float:
     return int(h) * 3600 + int(m) * 60 + float(s)
 
 
-def load_test_transcription(path: str) -> list[Segment] | None:
+def load_transcription(path: Path) -> list[Segment] | None:
     """
     Load the test transcription JSON and return a list of foreground/background segments, exactly like
     the model used for predicte doutputs.
@@ -71,19 +71,17 @@ def load_test_transcription(path: str) -> list[Segment] | None:
     return all_segments
 
 
-def load_test_audio(test_dir: str) -> list[tuple[Path, Audio]]:
+def load_test_audio(test_dir: Path) -> list[tuple[Path, Audio]]:
     """
     Loads test audio samples from either:
     - a single WAV file
     - a directory containing WAV files
     """
 
-    path = Path(test_dir)
-
-    if path.is_file():
-        wav_files = [path] if path.suffix.lower() == ".wav" else []
-    elif path.is_dir():
-        wav_files = list(path.glob("**/*.wav"))
+    if test_dir.is_file():
+        wav_files = [test_dir] if test_dir.suffix.lower() == ".wav" else []
+    elif test_dir.is_dir():
+        wav_files = list(test_dir.glob("**/*.wav"))
     else:
         log.warning("Path does not exist: %s", test_dir)
         return []
@@ -97,7 +95,7 @@ def load_test_audio(test_dir: str) -> list[tuple[Path, Audio]]:
     for wav_path in wav_files:
         log.info("Loading test file: %s", wav_path)
 
-        audio = loader.load_audio(str(wav_path))
+        audio = loader.load_audio(wav_path)
         audio_list.append((wav_path, audio))
 
     return audio_list
@@ -120,15 +118,15 @@ def _mix_speech_noise(
 
 
 def _build_core(
-    speech_dir: str, noise_dir: str
+    speech_dir: Path, noise_dir: Path
 ) -> tuple[np.ndarray, np.ndarray] | None:
     rng = np.random.default_rng(1337)
 
     log.info("Using speech file directory: %s", speech_dir)
     log.info("Using noise file directory: %s", noise_dir)
 
-    speech_files = sorted(Path(speech_dir).glob("**/*.wav"))
-    noise_files = sorted(Path(noise_dir).glob("**/*.wav"))
+    speech_files = sorted(speech_dir.glob("**/*.wav"))
+    noise_files = sorted(noise_dir.glob("**/*.wav"))
 
     if len(speech_files) == 0:
         log.critical("No speech files found for training")
@@ -145,7 +143,7 @@ def _build_core(
 
     for p in noise_files:
         try:
-            noise_audio.append(loader.load_audio(str(p)))
+            noise_audio.append(loader.load_audio(p))
         except Exception as e:
             log.warning("Skipping noise file %s — %s", p.name, e)
 
@@ -157,7 +155,7 @@ def _build_core(
     # Speech file processing loop
     for speech_path in speech_files:
         try:
-            speech_audio = loader.load_audio(str(speech_path))
+            speech_audio = loader.load_audio(speech_path)
         except Exception as e:
             log.error("Failed to load %s — %s", speech_path.name, e)
             continue
@@ -243,8 +241,8 @@ def _balance(
 
 
 def create(
-    speech_dir: str,
-    noise_dir: str,
+    speech_dir: Path,
+    noise_dir: Path,
 ) -> tuple[np.ndarray, np.ndarray] | None:
     """
     Process all WAV files under speech_dir and noise_dir and return a labelled feature matrix.
@@ -256,9 +254,9 @@ def create(
 
     Parameters
     ----------
-    speech_dir : str
+    speech_dir : Path
         Path to the directory containing speech WAV files.
-    noise_dir : str
+    noise_dir : Path
         Path to the directory containing noise WAV files.
 
     Returns
@@ -277,6 +275,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from scipy.io import wavfile
 
+    import files
     import loader
 
     argv = sys.argv
@@ -294,8 +293,8 @@ if __name__ == "__main__":
             sys.exit(1)
 
         speech_path, noise_path, snr_db = parameters
-        speech = loader.load_audio(speech_path)
-        noise = loader.load_audio(noise_path)
+        speech = loader.load_audio(files.to_path(speech_path))
+        noise = loader.load_audio(files.to_path(noise_path))
         mixed = _mix_speech_noise(speech.waveform, noise.waveform, float(snr_db))
 
         window_sec = 0.2
