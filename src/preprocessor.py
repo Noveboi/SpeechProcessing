@@ -17,8 +17,16 @@ def split_into_frames(
     audio: Audio,
     frame_ms: int,
     hop_ms: int,
-    window_fn: str,
+    window: str,
 ) -> list[Frame]:
+
+    if window not in WINDOW_FN:
+        raise ValueError(
+            f"Unknown window function '{window}'. Available: {list(WINDOW_FN)}"
+        )
+
+    window_func = WINDOW_FN[window]
+
     frame_samples = floor((frame_ms * audio.sample_rate) / 1000)
     hop_samples = floor((hop_ms * audio.sample_rate) / 1000)
 
@@ -36,7 +44,7 @@ def split_into_frames(
             pad_length = frame_samples - len(waveform)
             waveform = np.pad(waveform, (0, pad_length))
 
-        frame_audio = Audio(WINDOW_FN[window_fn](waveform), audio.sample_rate)
+        frame_audio = Audio(window_func(waveform), audio.sample_rate)
         frames.append(Frame(frame_audio, hop_start, frame_end - 1))
         hop_start = hop_end
         index += 1
@@ -98,7 +106,7 @@ def process(
         audio,
         frame_ms=frame_ms,
         hop_ms=hop_ms,
-        window_fn=window_fn,
+        window=window_fn,
     )
 
     return frames
