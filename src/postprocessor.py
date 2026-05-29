@@ -38,13 +38,13 @@ def _smooth_predictions(
         Should be long enough to absorb isolated wrong predictions but
         short enough not to blur genuine short segments.
     hop_ms : int
-        Frame hop size used during feature extraction .
+        Frame hop size used during feature extraction.
 
     Returns
     -------
     smoothed : np.ndarray, shape (N_frames,)  dtype ``int``
     """
-    window_frames = max(1, window_ms // hop_ms)
+    window_frames = max(1, round(window_ms / hop_ms))
 
     # window_frames must be odd for a symmetric window
     if window_frames % 2 == 0:
@@ -53,15 +53,15 @@ def _smooth_predictions(
     smoothed = median_filter(predictions, size=window_frames, mode="nearest")
     smoothed = smoothed.astype(int)
 
-    n_changed = np.sum(predictions != smoothed)
-
-    log.info(
-        "Median filter (window=%d ms / %d frames) — %d frames changed (%.1f%%)",
-        window_ms,
-        window_frames,
-        n_changed,
-        100 * n_changed / len(predictions),
-    )
+    if log.isEnabledFor(logging.INFO):
+        n_changed = np.count_nonzero(predictions != smoothed)
+        log.info(
+            "Median filter (window=%d ms / %d frames) — %d frames changed (%.1f%%)",
+            window_ms,
+            window_frames,
+            n_changed,
+            100 * n_changed / len(predictions),
+        )
 
     return smoothed
 
@@ -71,15 +71,37 @@ def _apply_hangover(
     hop_ms: int,
     hangover_ms: int = 400,
 ) -> np.ndarray:
+    """
+    Applies trailing 1's to the ``predictions`` vector of duration ``hangover_ms``.
+
+    predictions : ndarray, shape (N_frames,)
+        Binary predictions (0=noise, 1=speech).
+    hop_ms : int
+        Frame hop size used during feature extraction.
+    hangover_ms : int
+        The duration of trailing 1's to add.
+    """
     hangover_frames = hangover_ms // hop_ms
     result = predictions.copy()
     counter = 0
+
     for i in range(len(result)):
         if predictions[i] == 1:
             counter = hangover_frames
         elif counter > 0:
             result[i] = 1
             counter -= 1
+
+    if log.isEnabledFor(logging.INFO):
+        n_changed = np.count_nonzero(predictions != result)
+        log.info(
+            "Hang-over (hang=%d ms / %d frames) — %d frames changed to '1' (%.1f%%)",
+            hangover_ms,
+            hangover_frames,
+            n_changed,
+            100 * n_changed / len(predictions),
+        )
+
     return result
 
 
@@ -90,53 +112,51 @@ def _remove_short_segments(
 ) -> np.ndarray:
     """
     Merge segments shorter than min_duration_ms into their neighbours.
-
-    Operates by iterating over runs (contiguous same-label stretches).
-    A short run is relabelled to match the label of whichever neighbour
-    is longer. If both neighbours are equal length the preceding
-    neighbour wins.
-
-    Parameters
-    ----------
-    predictions : np.ndarray, shape (N_frames,)
-        Smoothed binary predictions.
-    min_duration_ms : int
-        Minimum allowed segment duration in milliseconds (default: 300).
-    hop_ms : int
-        Frame hop size in milliseconds .
-
-    Returns
-    -------
-    cleaned : np.ndarray, shape (N_frames,), dtype int
     """
     min_frames = max(1, min_duration_ms // hop_ms)
+
+    # Mutable runs: [label, start, end]
+    runs = [list(r) for r in _get_runs(predictions)]
+
+    if len(runs) <= 1:
+        return predictions.copy()
+
+    i = 0
+    while i < len(runs):
+        label, start, end = runs[i]
+        length = end - start
+
+        if length >= min_frames:
+            i += 1
+            continue
+
+        prev_len = runs[i - 1][2] - runs[i - 1][1] if i > 0 else 0
+        next_len = runs[i + 1][2] - runs[i + 1][1] if i + 1 < len(runs) else 0
+
+        if prev_len == 0 and next_len == 0:
+            # Only one run in the entire sequence.
+            break
+
+        replacement = runs[i - 1][0] if prev_len >= next_len else runs[i + 1][0]
+        runs[i][0] = replacement
+
+        # Coalesce with left neighbor if labels now match.
+        if i > 0 and runs[i - 1][0] == replacement:
+            runs[i - 1][2] = runs[i][2]
+            del runs[i]
+            i -= 1
+
+        # Coalesce with right neighbor if labels now match.
+        if i + 1 < len(runs) and runs[i][0] == runs[i + 1][0]:
+            runs[i][2] = runs[i + 1][2]
+            del runs[i + 1]
+
+        # Recheck the local neighborhood after the merge.
+        i = max(i - 1, 0)
+
     cleaned = predictions.copy()
-
-    changed = True
-
-    # this guy is a doozie!!!
-    while changed:
-        changed = False
-        runs = _get_runs(cleaned)
-
-        for i, (_, start, end) in enumerate(runs):
-            length = end - start  # frames in this run
-
-            if length >= min_frames:
-                continue
-
-            # Determine replacement label from longer neighbour
-            prev_len = (runs[i - 1][2] - runs[i - 1][1]) if i > 0 else 0
-            next_len = (runs[i + 1][2] - runs[i + 1][1]) if i < len(runs) - 1 else 0
-
-            if prev_len == 0 and next_len == 0:
-                # Only one run in the entire sequence — nothing to merge into
-                break
-
-            replacement = runs[i - 1][0] if prev_len >= next_len else runs[i + 1][0]
-            cleaned[start:end] = replacement
-            changed = True  # a merge happened — rescan from the top
-            break  # runs list is now stale; recompute and retry
+    for label, start, end in runs:
+        cleaned[start:end] = label
 
     n_changed = np.sum(predictions != cleaned)
     log.info(
@@ -231,7 +251,12 @@ def process(
     smooth_window_ms: int = 300,
 ) -> list[Segment]:
     """
-    Full post-processing pipeline.
+    Invoke the post-processing pipeline.
+
+    Parameters
+    -------
+    predictions : ndarray, shape (N_frames,)
+        The binary classification vector (0=noise, 1=sepech)
 
     Returns
     -------
