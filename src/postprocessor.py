@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 def _smooth_predictions(
     predictions: np.ndarray,
     hop_ms: int,
-    window_ms: int = 300,
+    window_ms: int,
 ) -> np.ndarray:
     """
     Apply a median filter to the "raw" predictions.
@@ -69,7 +69,7 @@ def _smooth_predictions(
 def _apply_hangover(
     predictions: np.ndarray,
     hop_ms: int,
-    hangover_ms: int = 400,
+    hangover_ms: int,
 ) -> np.ndarray:
     """
     Applies trailing 1's to the ``predictions`` vector of duration ``hangover_ms``.
@@ -108,7 +108,7 @@ def _apply_hangover(
 def _remove_short_segments(
     predictions: np.ndarray,
     hop_ms: int,
-    min_duration_ms: int = 300,
+    min_duration_ms: int,
 ) -> np.ndarray:
     """
     Merge segments shorter than min_duration_ms into their neighbours.
@@ -140,13 +140,13 @@ def _remove_short_segments(
         replacement = runs[i - 1][0] if prev_len >= next_len else runs[i + 1][0]
         runs[i][0] = replacement
 
-        # Coalesce with left neighbor if labels now match.
+        # Coalesce with left neighbour if labels now match.
         if i > 0 and runs[i - 1][0] == replacement:
             runs[i - 1][2] = runs[i][2]
             del runs[i]
             i -= 1
 
-        # Coalesce with right neighbor if labels now match.
+        # Coalesce with right neighbour if labels now match.
         if i + 1 < len(runs) and runs[i][0] == runs[i + 1][0]:
             runs[i][2] = runs[i + 1][2]
             del runs[i + 1]
@@ -210,7 +210,7 @@ def _get_runs(
 
 def _extract_segments(
     predictions: np.ndarray,
-    hop_ms: int = 10,
+    hop_ms: int,
 ) -> list[Segment]:
     """
     Convert a cleaned frame-label sequence into a list of time segments.
@@ -249,6 +249,8 @@ def process(
     predictions: np.ndarray,
     hop_ms: int,
     smooth_window_ms: int = 300,
+    hangover_ms: int = 400,
+    min_duration_ms: int = 300,
 ) -> list[Segment]:
     """
     Invoke the post-processing pipeline.
@@ -257,6 +259,15 @@ def process(
     -------
     predictions : ndarray, shape (N_frames,)
         The binary classification vector (0=noise, 1=sepech)
+    hop_ms : int
+        The frame hop size in milliseconds.
+    smooth_window_ms : int
+        The median filter window size in milliseconds.
+    hangover_ms : int
+        The hangover duration in milliseconds.
+    min_duration_ms : int
+        The minimum acceptable duration for short segments. Segments shorter than
+        the given value will be merged into their neighbours
 
     Returns
     -------
@@ -265,10 +276,21 @@ def process(
     log.info("Post-processing %d frames", len(predictions))
 
     predictions = _smooth_predictions(
-        predictions, hop_ms=hop_ms, window_ms=smooth_window_ms
+        predictions,
+        hop_ms=hop_ms,
+        window_ms=smooth_window_ms,
     )
-    predictions = _apply_hangover(predictions, hop_ms=hop_ms)
-    predictions = _remove_short_segments(predictions, hop_ms=hop_ms)
-    segments = _extract_segments(predictions, hop_ms=hop_ms)
 
-    return segments
+    predictions = _apply_hangover(
+        predictions,
+        hop_ms=hop_ms,
+        hangover_ms=hangover_ms,
+    )
+
+    predictions = _remove_short_segments(
+        predictions,
+        hop_ms=hop_ms,
+        min_duration_ms=min_duration_ms,
+    )
+
+    return _extract_segments(predictions, hop_ms=hop_ms)

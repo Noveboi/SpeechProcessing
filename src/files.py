@@ -60,7 +60,7 @@ def load_transcription(path: Path) -> list[Segment] | None:
         return []
 
     all_segments: list[Segment] = []
-    current_end: float = -1.0
+    current_end: float = 0.0
 
     for seg_fg in speech_segments:
         if seg_fg.start > current_end:
