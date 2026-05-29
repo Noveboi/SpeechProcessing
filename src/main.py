@@ -16,7 +16,7 @@ import extractor
 import files
 import postprocessor
 import preprocessor
-from common import Audio, Segment
+from common import Audio, Segment, SegmentCollection
 
 log = logging.getLogger(__name__)
 
@@ -114,8 +114,8 @@ def run_evaluation_program(args: configuration.EvaluationConfiguration) -> None:
         raise ValueError("CSV file not found")
 
     evaluation = evaluator.evaluate(
-        prediction_segments=predicted_segments,
-        ground_truth_segments=transcription_segments,
+        prediction_segments=SegmentCollection(predicted_segments),
+        ground_truth_segments=SegmentCollection(transcription_segments),
     )
 
     evaluation_path = results_dir / "evaluation.json"

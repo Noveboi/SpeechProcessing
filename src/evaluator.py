@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from common import Seconds, Segment, SegmentLabel
+from common import Seconds, SegmentCollection, SegmentLabel
 
 log = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class Evaluation:
     overall_score: float
 
     # Time-based overlap metrics
-    foreground_overlap_percent: float  # recall
+    recall_percent: float
     precision_percent: float
     f1_score: float
 
@@ -41,31 +41,18 @@ class Evaluation:
 
 
 def _total_intersection(
-    a_segments: list[Segment],
-    b_segments: list[Segment],
+    a_segments: SegmentCollection,
+    b_segments: SegmentCollection,
 ) -> float:
     """
     Total duration of time covered by both a and b foreground segments.
     Merges each side first to avoid double-counting.
     """
-
-    def merge(segs: list[Segment]) -> list[tuple[float, float]]:
-        intervals = sorted((s.start, s.end) for s in segs)
-        merged: list[tuple[float, float]] = []
-        for start, end in intervals:
-            if merged and start <= merged[-1][1]:
-                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
-            else:
-                merged.append((start, end))
-        return merged
-
-    a_merged = merge(a_segments)
-    b_merged = merge(b_segments)
-
     total = 0.0
-    for a_start, a_end in a_merged:
-        for b_start, b_end in b_merged:
-            total += max(0.0, min(a_end, b_end) - max(a_start, b_start))
+
+    for a in a_segments:
+        for b in b_segments:
+            total += max(0.0, min(a.end, b.end) - max(a.start, b.start))
 
     return total
 
@@ -141,12 +128,12 @@ def _overall_score(
 
 
 def evaluate(
-    prediction_segments: list[Segment],
-    ground_truth_segments: list[Segment],
+    prediction_segments: SegmentCollection,
+    ground_truth_segments: SegmentCollection,
 ) -> Evaluation:
-    fg_pred = [s for s in prediction_segments if s.label == SegmentLabel.FOREGROUND]
-    fg_gt = [s for s in ground_truth_segments if s.label == SegmentLabel.FOREGROUND]
-    bg_gt = [s for s in ground_truth_segments if s.label == SegmentLabel.BACKGROUND]
+    fg_pred = prediction_segments.where(lambda s: s.label == SegmentLabel.FOREGROUND)
+    fg_gt = ground_truth_segments.where(lambda s: s.label == SegmentLabel.FOREGROUND)
+    bg_gt = ground_truth_segments.where(lambda s: s.label == SegmentLabel.BACKGROUND)
 
     gt_fg_total = sum(s.duration for s in fg_gt)
     gt_bg_total = sum(s.duration for s in bg_gt)
@@ -188,7 +175,7 @@ def evaluate(
         overall_score=score,
         prediction_stats=statistics(prediction_segments),
         ground_truth_stats=statistics(ground_truth_segments),
-        foreground_overlap_percent=recall * 100,
+        recall_percent=recall * 100,
         precision_percent=precision * 100,
         f1_score=f1,
         false_alarm_rate=far,
@@ -201,10 +188,10 @@ def safe_divide(a: float, b: float) -> float:
     return a / b if b > 0.0 else 0.0
 
 
-def statistics(segments: list[Segment]) -> SegmentStatistics:
+def statistics(segments: SegmentCollection) -> SegmentStatistics:
     total_duration = sum(s.duration for s in segments)
-    fg = [s for s in segments if s.label == SegmentLabel.FOREGROUND]
-    bg = [s for s in segments if s.label == SegmentLabel.BACKGROUND]
+    fg = segments.where(lambda s: s.label == SegmentLabel.FOREGROUND)
+    bg = segments.where(lambda s: s.label == SegmentLabel.BACKGROUND)
 
     fg_count = len(fg)
     bg_count = len(bg)
