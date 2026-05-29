@@ -153,11 +153,11 @@ def _balance(
     speech_idx = rng.choice(speech_idx, n_keep, replace=False)
     noise_idx = rng.choice(noise_idx, n_keep, replace=False)
 
-    idx = np.concatenate([speech_idx, noise_idx])
-    idx = rng.permutation(idx)  # shuffle so classes aren't in blocks
+    idxs = np.concatenate([speech_idx, noise_idx])
+    idxs = rng.permutation(idxs)  # shuffle so classes aren't in blocks
 
-    log.info("Balanced dataset — %d frames per class (%d total)", n_keep, len(idx))
-    return X[idx], y[idx]
+    log.info("Balanced dataset — %d frames per class (%d total)", n_keep, len(idxs))
+    return X[idxs], y[idxs]
 
 
 def create(
