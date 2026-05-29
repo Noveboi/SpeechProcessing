@@ -1,9 +1,6 @@
 #!/usr/bin/python3
-"""
-Usage:
-    python visualizer.py <audio_file> <csv_file>
-"""
 
+import argparse
 import csv
 import sys
 import tkinter as tk
@@ -163,11 +160,33 @@ class Visualizer:
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: python visualizer.py <audio_file> <csv_file>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Voice Activity Detection (VAD) visualizer. "
+        "The program receives two arguments: a CSV file containing the foreground/background segments, "
+        "and the audio file which was used for the predictions. "
+        "If the inputs are valid, a window will open with a 'Play' button. Pressing the button will start playing the audio"
+        "and the screen will turn GREEN at the timestamps when 'foreground' is flagged on the CSV and RED when 'background' is flagged."
+    )
 
-    audio_path, csv_path = sys.argv[1], sys.argv[2]
+    parser.add_argument(
+        "-c",
+        "--csv",
+        help="The CSV prediction file",
+        type=str,
+        required=True,
+    )
+
+    parser.add_argument(
+        "-a",
+        "--audio",
+        help="The audio file",
+        type=str,
+        required=True,
+    )
+
+    args = parser.parse_args()
+
+    audio_path, csv_path = args.audio, args.csv
 
     if not Path(audio_path).exists():
         sys.exit(f"Audio file not found: {audio_path}")
