@@ -74,7 +74,7 @@ class KNN(FrameClassifier):
 
         classifier = KNeighborsClassifier(
             n_neighbors=k,
-            algorithm="kd_tree",
+            algorithm="ball_tree",
             n_jobs=-1,  # use CPU all cores
         )
 
