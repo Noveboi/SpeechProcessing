@@ -68,24 +68,26 @@ def cli(
     test_program: Callable[[TestingConfiguration], None],
     evaluation_program: Callable[[EvaluationConfiguration], None],
 ) -> None:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Voice Activity Detection (VAD) system using basic machine learning",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     model_choices = classifier.CLASSIFIERS.keys()
 
     train_parser = subparsers.add_parser(
         name="train",
-        help="Train the classifier on speech and noise data.",
+        help="Train a classifier on speech and noise data.",
     )
 
     test_parser = subparsers.add_parser(
         name="test",
-        help="Test the trained classifier.",
+        help="Test a trained classifier.",
     )
 
     evaluate_parser = subparsers.add_parser(
         name="evaluate",
-        help="Evaluate the tests using ground-truth transcripts.",
+        help="Evaluate test outputs using ground-truth transcripts.",
     )
 
     train_parser.add_argument(
@@ -113,6 +115,7 @@ def cli(
     )
 
     train_parser.add_argument(
+        "-l",
         "--layers",
         help="The hidden layer sizes of the MLP classifier.",
         nargs="+",
@@ -121,6 +124,7 @@ def cli(
     )
 
     test_parser.add_argument(
+        "-r",
         "--results",
         help="The directory where the results (CSV, analytics) will be stored",
         type=str,
@@ -136,14 +140,15 @@ def cli(
     )
 
     test_parser.add_argument(
-        "-t",
-        "--test",
-        help="The test directory containing audio files which will be used for testing the classification process",
+        "-i",
+        "--input",
+        help="The test directory (or file) which will be used for testing the classification process",
         type=str,
         required=True,
     )
 
     test_parser.add_argument(
+        "-l",
         "--layers",
         help="The hidden layer sizes of the MLP classifier.",
         nargs="+",

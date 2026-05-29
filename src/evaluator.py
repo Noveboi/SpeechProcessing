@@ -22,22 +22,17 @@ class SegmentStatistics:
 
 @dataclass(frozen=True)
 class Evaluation:
-    prediction_stats: SegmentStatistics
-    ground_truth_stats: SegmentStatistics
-
     overall_score: float
 
-    # Time-based overlap metrics
-    recall_percent: float
-    precision_percent: float
-    f1_score: float
-
-    # Error breakdown
+    recall: float
+    precision: float
+    f1: float
     false_alarm_rate: float  # noise labeled as speech
     miss_rate: float  # speech labeled as noise
-
-    # Segmentation quality
     segmentation_ratio: float  # predicted fg segments / gt fg segments
+
+    prediction_stats: SegmentStatistics
+    ground_truth_stats: SegmentStatistics
 
 
 def _total_intersection(
@@ -175,9 +170,9 @@ def evaluate(
         overall_score=score,
         prediction_stats=statistics(prediction_segments),
         ground_truth_stats=statistics(ground_truth_segments),
-        recall_percent=recall * 100,
-        precision_percent=precision * 100,
-        f1_score=f1,
+        recall=recall,
+        precision=precision,
+        f1=f1,
         false_alarm_rate=far,
         miss_rate=miss_rate,
         segmentation_ratio=seg_ratio,
