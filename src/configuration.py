@@ -226,7 +226,7 @@ def _config_test_subprogram(func: Callable[[TestingConfiguration], None]):
             model_name=args.model,
             layers=args.layers,
             k=args.k_neighbours,
-            test_files_path=args.test,
+            test_files_path=args.input,
             results_directory=args.results,
         )
     )
