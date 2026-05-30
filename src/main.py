@@ -49,7 +49,7 @@ def predict(
 
 def run_train_program(args: configuration.TrainingConfiguration) -> None:
     log.info("Running training program (%s)", args)
-    clf = classifier.get(args.model_name, layers=args.layers)
+    clf = classifier.get(args.model_name, **dataclasses.asdict(args))
 
     speech_dir = files.to_existing_path(args.speech_files_path)
     noise_dir = files.to_existing_path(args.noise_files_path)
@@ -79,7 +79,7 @@ def run_test_program(args: configuration.TestingConfiguration) -> None:
     if len(test_audio) == 0:
         return
 
-    clf = classifier.get(args.model_name, layers=args.layers)
+    clf = classifier.get(args.model_name, **dataclasses.asdict(args))
     stored_clf: classifier.FrameClassifier | None = cache.load(clf.cache_path)
 
     if not stored_clf:

@@ -61,19 +61,16 @@ class FrameClassifier(ABC):
 class KNN(FrameClassifier):
     """
     k-Nearest Neighbours classifier.
-
-    Parameters
-    ----------
-    k : int
-        Number of neighbours (default: 5).
-        IMPORTANT: Use an odd number to avoid ties.
     """
 
-    def __init__(self, k: int = 5, **kwargs) -> None:
-        self.k = k
+    def __init__(self, **kwargs) -> None:
+        self.k = int(kwargs.get("k") or 5)
+
+        if self.k % 2 == 0:
+            raise ValueError(f"'k' parameter should be odd (Got '{self.k}')")
 
         classifier = KNeighborsClassifier(
-            n_neighbors=k,
+            n_neighbors=self.k,
             algorithm="ball_tree",
             n_jobs=-1,  # use CPU all cores
         )

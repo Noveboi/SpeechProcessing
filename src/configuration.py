@@ -19,6 +19,7 @@ class TrainingConfiguration(SubprogramConfiguration):
     speech_files_path: str
     noise_files_path: str
     layers: tuple[int, ...] | None
+    k: int
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ class TestingConfiguration(SubprogramConfiguration):
     test_files_path: str
     results_directory: str
     layers: tuple[int, ...] | None
+    k: int
 
 
 @dataclass(frozen=True)
@@ -123,6 +125,15 @@ def cli(
         required=False,
     )
 
+    train_parser.add_argument(
+        "-k",
+        "--k-neighbours",
+        help="The 'k' parameter of the k-NN classifier",
+        default=5,
+        type=int,
+        required=False,
+    )
+
     test_parser.add_argument(
         "-r",
         "--results",
@@ -152,6 +163,15 @@ def cli(
         "--layers",
         help="The hidden layer sizes of the MLP classifier.",
         nargs="+",
+        type=int,
+        required=False,
+    )
+
+    test_parser.add_argument(
+        "-k",
+        "--k-neighbours",
+        help="The 'k' parameter of the k-NN classifier",
+        default=5,
         type=int,
         required=False,
     )
@@ -193,6 +213,7 @@ def _config_train_subprogram(func: Callable[[TrainingConfiguration], None]):
         TrainingConfiguration(
             model_name=args.model,
             layers=args.layers,
+            k=args.k_neighbours,
             speech_files_path=args.speech,
             noise_files_path=args.noise,
         )
@@ -204,6 +225,7 @@ def _config_test_subprogram(func: Callable[[TestingConfiguration], None]):
         TestingConfiguration(
             model_name=args.model,
             layers=args.layers,
+            k=args.k_neighbours,
             test_files_path=args.test,
             results_directory=args.results,
         )
