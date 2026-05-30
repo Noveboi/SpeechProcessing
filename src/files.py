@@ -59,6 +59,8 @@ def load_transcription(path: Path) -> list[Segment] | None:
     if len(speech_segments) == 0:
         return []
 
+    speech_segments.sort(key=lambda s: s.start)
+
     all_segments: list[Segment] = []
     current_end: float = 0.0
 
@@ -71,9 +73,8 @@ def load_transcription(path: Path) -> list[Segment] | None:
                     label=SegmentLabel.BACKGROUND,
                 )
             )
-
         all_segments.append(seg_fg)
-        current_end = seg_fg.end
+        current_end = max(current_end, seg_fg.end)  # never go backwards
 
     log.info("Loaded %d transcript speech segments from %s", len(speech_segments), path)
     return all_segments
