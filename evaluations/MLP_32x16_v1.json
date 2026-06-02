@@ -1,0 +1,29 @@
+{
+  "overall_score": 0.6641457602550923,
+  "recall": 0.7976173620813566,
+  "precision": 0.8157717501929658,
+  "f1": 0.8065924165462839,
+  "false_alarm_rate": 0.656208030830911,
+  "miss_rate": 0.20238263791864342,
+  "segmentation_ratio": 0.9962210675484175,
+  "prediction_stats": {
+    "foreground_percent": 0.76696639620459,
+    "background_percent": 0.23303360379541002,
+    "foreground_average_duration": 3.4708629682313887,
+    "background_average_duration": 1.0550806451612906,
+    "foreground_max_duration": 62.129999999999995,
+    "background_max_duration": 13.149999999999636,
+    "foreground_min_duration": 0.4099999999998545,
+    "background_min_duration": 0.2999999999992724
+  },
+  "ground_truth_stats": {
+    "foreground_percent": 0.7846220919874166,
+    "background_percent": 0.2153779080125834,
+    "foreground_average_duration": 3.5364478034955185,
+    "background_average_duration": 0.971209829867669,
+    "foreground_max_duration": 62.98999999999887,
+    "background_max_duration": 25.590000000000146,
+    "foreground_min_duration": 0.22999999999956344,
+    "background_min_duration": 0.009999999999308784
+  }
+}
